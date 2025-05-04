@@ -166,7 +166,7 @@ export function CreatePostButton({ onPostCreated, currentUser = { name: "You", a
     <>
       <button 
         onClick={openModal}
-        className="flex items-center bg-gradient-to-r from-pink-800 to-orange-300 text-white px-4 py-2 rounded-md hover:from-pink-900 hover:to-orange-400 transition duration-300 transform hover:scale-105 shadow-lg"
+        className="flex items-center bg-blue-500 text-white px-4 py-2 rounded-full hover:bg-blue-600 transition-colors"
       >
         <Plus size={18} className="mr-2" />
         Create
@@ -175,57 +175,72 @@ export function CreatePostButton({ onPostCreated, currentUser = { name: "You", a
       {/* Create Post Modal */}
       {isModalVisible && (
         <div 
-          className={`fixed inset-0 bg-black flex items-center justify-center z-50 transition-all duration-300 ease-in-out ${
-            isModalOpen ? 'bg-opacity-80 backdrop-blur-sm' : 'bg-opacity-0 backdrop-blur-none'
+          className={`fixed inset-0 bg-black/50 flex items-center justify-center z-50 transition-all duration-300 ease-in-out ${
+            isModalOpen ? 'opacity-100' : 'opacity-0'
           }`}
           onClick={(e) => {
-            // Close when clicking backdrop, but not when clicking modal
             if (e.target === e.currentTarget) {
               closeModal();
             }
           }}
         >
           <div 
-            className={`bg-gradient-to-br from-gray-900 to-black rounded-lg w-full max-w-xl relative border border-gray-800 flex flex-col transition-all duration-300 ease-in-out ${
+            className={`bg-white rounded-lg w-full max-w-xl relative flex flex-col transition-all duration-300 ease-in-out ${
               isModalOpen 
-              ? 'opacity-100 scale-100 translate-y-0' 
-              : 'opacity-0 scale-95 translate-y-4'
+                ? 'opacity-100 scale-100 translate-y-0' 
+                : 'opacity-0 scale-95 translate-y-4'
             }`}
           >
             {/* Modal Header */}
-            <div className="flex items-center justify-between border-b border-gray-800 p-4">
-              <h2 className="text-xl font-medium text-white">Create post</h2>
+            <div className="flex items-center justify-between border-b border-gray-200 p-4">
+              <h2 className="text-xl font-medium text-gray-900">Create post</h2>
               <button
                 onClick={closeModal}
-                className="text-gray-400 hover:text-white hover:rotate-90 transform transition-all duration-300"
+                className="text-gray-500 hover:text-gray-700 transition-colors"
               >
                 <X size={24} />
               </button>
             </div>
 
             {/* Tabs */}
-            <div className="flex border-b border-gray-800">
+            <div className="flex border-b border-gray-200">
               <button 
                 onClick={() => handleTabChange('text')} 
-                className={`px-4 py-2 text-center flex-1 transition-all duration-300 ${activeTab === 'text' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-200'}`}
+                className={`px-4 py-2 text-center flex-1 transition-all duration-300 ${
+                  activeTab === 'text' 
+                    ? 'text-blue-500 border-b-2 border-blue-500' 
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
               >
                 Text
               </button>
               <button 
                 onClick={() => handleTabChange('media')} 
-                className={`px-4 py-2 text-center flex-1 transition-all duration-300 ${activeTab === 'media' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-200'}`}
+                className={`px-4 py-2 text-center flex-1 transition-all duration-300 ${
+                  activeTab === 'media' 
+                    ? 'text-blue-500 border-b-2 border-blue-500' 
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
               >
                 Images & Video
               </button>
               <button 
                 onClick={() => handleTabChange('link')} 
-                className={`px-4 py-2 text-center flex-1 transition-all duration-300 ${activeTab === 'link' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-200'}`}
+                className={`px-4 py-2 text-center flex-1 transition-all duration-300 ${
+                  activeTab === 'link' 
+                    ? 'text-blue-500 border-b-2 border-blue-500' 
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
               >
                 Link
               </button>
               <button 
                 onClick={() => handleTabChange('poll')} 
-                className={`px-4 py-2 text-center flex-1 transition-all duration-300 ${activeTab === 'poll' ? 'text-blue-400 border-b-2 border-blue-400' : 'text-gray-400 hover:text-gray-200'}`}
+                className={`px-4 py-2 text-center flex-1 transition-all duration-300 ${
+                  activeTab === 'poll' 
+                    ? 'text-blue-500 border-b-2 border-blue-500' 
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
               >
                 Poll
               </button>
@@ -241,10 +256,10 @@ export function CreatePostButton({ onPostCreated, currentUser = { name: "You", a
                   required
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full bg-transparent border border-gray-700 rounded-md p-2 mb-4 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-200"
+                  className="w-full bg-white border border-gray-200 rounded-md p-2 mb-4 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-200"
                 />
                 
-                <div className="text-right text-xs text-gray-400 -mt-3 mb-2">
+                <div className="text-right text-xs text-gray-500 -mt-3 mb-2">
                   {title.length}/300
                 </div>
 
@@ -254,24 +269,24 @@ export function CreatePostButton({ onPostCreated, currentUser = { name: "You", a
                   placeholder="Add tags (comma separated)"
                   value={tags}
                   onChange={(e) => setTags(e.target.value)}
-                  className="w-full bg-gray-800 bg-opacity-50 rounded-md p-2 mb-4 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-200"
+                  className="w-full bg-gray-50 rounded-md p-2 mb-4 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-200"
                 />
 
                 {/* Text Tab Content */}
                 {activeTab === 'text' && (
-                  <div className="border border-gray-700 rounded-md p-2 min-h-32 mb-4 transition-all duration-200 hover:border-gray-600">
+                  <div className="border border-gray-200 rounded-md p-2 min-h-32 mb-4 transition-all duration-200 hover:border-gray-300">
                     <textarea
                       placeholder="Body text (optional)"
                       value={content}
                       onChange={(e) => setContent(e.target.value)}
-                      className="w-full bg-transparent min-h-24 text-white focus:outline-none resize-none"
+                      className="w-full bg-transparent min-h-24 text-gray-900 focus:outline-none resize-none"
                     />
                   </div>
                 )}
 
                 {/* Media Tab Content */}
                 {activeTab === 'media' && (
-                  <div className="border border-gray-700 border-dashed rounded-md p-8 min-h-32 mb-4 flex items-center justify-center flex-col transition-all duration-300 hover:border-blue-500 hover:bg-blue-900 hover:bg-opacity-5">
+                  <div className="border border-gray-200 border-dashed rounded-md p-8 min-h-32 mb-4 flex items-center justify-center flex-col transition-all duration-300 hover:border-blue-500 hover:bg-blue-50">
                     <input
                       type="file"
                       id="media-upload"
@@ -284,22 +299,22 @@ export function CreatePostButton({ onPostCreated, currentUser = { name: "You", a
                       htmlFor="media-upload"
                       className="cursor-pointer flex flex-col items-center justify-center w-full h-full"
                     >
-                      <Upload size={24} className="text-gray-400 mb-2 transition-transform duration-300 group-hover:scale-110" />
-                      <p className="text-gray-400 text-center mb-2">Drag and Drop or upload media</p>
+                      <Upload size={24} className="text-gray-400 mb-2" />
+                      <p className="text-gray-500 text-center mb-2">Drag and Drop or upload media</p>
                       <button
                         type="button"
-                        className="px-4 py-2 bg-gray-800 rounded-md text-white hover:bg-gray-700 transition-all duration-300 hover:shadow-lg transform hover:scale-105"
+                        className="px-4 py-2 bg-gray-100 rounded-md text-gray-700 hover:bg-gray-200 transition-colors"
                       >
                         Select Files
                       </button>
                     </label>
                     
                     {mediaFiles.length > 0 && (
-                      <div className="mt-4 w-full animate-fadeIn">
-                        <p className="text-gray-300 mb-2">Selected files ({mediaFiles.length}):</p>
-                        <ul className="text-gray-400 text-sm">
+                      <div className="mt-4 w-full">
+                        <p className="text-gray-700 mb-2">Selected files ({mediaFiles.length}):</p>
+                        <ul className="text-gray-500 text-sm">
                           {mediaFiles.map((file, index) => (
-                            <li key={index} className="truncate animate-slideIn" style={{animationDelay: `${index * 100}ms`}}>{file.name}</li>
+                            <li key={index} className="truncate">{file.name}</li>
                           ))}
                         </ul>
                       </div>
@@ -317,9 +332,9 @@ export function CreatePostButton({ onPostCreated, currentUser = { name: "You", a
                         required
                         value={linkUrl}
                         onChange={(e) => setLinkUrl(e.target.value)}
-                        className="w-full bg-transparent border border-gray-700 rounded-md p-2 pl-9 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-200"
+                        className="w-full bg-white border border-gray-200 rounded-md p-2 pl-9 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-200"
                       />
-                      <LinkIcon size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-500" />
+                      <LinkIcon size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
                     </div>
                   </div>
                 )}
@@ -327,24 +342,24 @@ export function CreatePostButton({ onPostCreated, currentUser = { name: "You", a
                 {/* Poll Tab Content */}
                 {activeTab === 'poll' && (
                   <div className="mb-4">
-                    <div className="border border-gray-700 rounded-md p-4 min-h-32 transition-all duration-200 hover:border-gray-600">
-                      <h3 className="text-lg mb-3 text-gray-300">Poll Options</h3>
+                    <div className="border border-gray-200 rounded-md p-4 min-h-32 transition-all duration-200 hover:border-gray-300">
+                      <h3 className="text-lg mb-3 text-gray-900">Poll Options</h3>
                       
                       {pollOptions.map((option, index) => (
-                        <div key={index} className="flex items-center mb-3 animate-fadeIn" style={{animationDelay: `${index * 100}ms`}}>
+                        <div key={index} className="flex items-center mb-3">
                           <input
                             type="text"
                             placeholder={`Option ${index + 1}`}
                             value={option}
                             onChange={(e) => updatePollOption(index, e.target.value)}
-                            className="flex-1 bg-gray-800 border border-gray-700 rounded-md p-2 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-200"
-                            required={index < 2} // First two options are required
+                            className="flex-1 bg-white border border-gray-200 rounded-md p-2 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-200"
+                            required={index < 2}
                           />
                           {index >= 2 && (
                             <button
                               type="button"
                               onClick={() => removePollOption(index)}
-                              className="ml-2 p-2 text-gray-400 hover:text-red-500 transition-colors duration-300 hover:rotate-90 transform"
+                              className="ml-2 p-2 text-gray-400 hover:text-red-500 transition-colors"
                             >
                               <X size={18} />
                             </button>
@@ -356,19 +371,19 @@ export function CreatePostButton({ onPostCreated, currentUser = { name: "You", a
                         <button
                           type="button"
                           onClick={addPollOption}
-                          className="mt-2 text-blue-400 hover:text-blue-300 transition-all duration-300 flex items-center transform hover:translate-x-1"
+                          className="mt-2 text-blue-500 hover:text-blue-600 transition-colors flex items-center"
                         >
-                          <Plus size={16} className="mr-1 transition-transform duration-300 transform group-hover:rotate-90" />
+                          <Plus size={16} className="mr-1" />
                           Add Option
                         </button>
                       )}
                       
                       <div className="mt-4">
-                        <label className="block text-gray-300 mb-2">Poll Duration</label>
+                        <label className="block text-gray-700 mb-2">Poll Duration</label>
                         <select
                           value={pollDuration}
                           onChange={(e) => setPollDuration(e.target.value)}
-                          className="w-full bg-gray-800 border border-gray-700 rounded-md p-2 text-white focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-200"
+                          className="w-full bg-white border border-gray-200 rounded-md p-2 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-200"
                         >
                           <option value="1 day">1 Day</option>
                           <option value="3 days">3 Days</option>
@@ -385,13 +400,13 @@ export function CreatePostButton({ onPostCreated, currentUser = { name: "You", a
                   <button
                     type="button"
                     onClick={closeModal}
-                    className="px-4 py-2 border border-gray-700 rounded-md text-gray-300 hover:bg-gray-800 transition-all duration-300 hover:text-white"
+                    className="px-4 py-2 border border-gray-200 rounded-md text-gray-700 hover:bg-gray-50 transition-colors"
                   >
                     Cancel
                   </button>
                   <button
                     type="submit"
-                    className="px-4 py-2 bg-gradient-to-r from-pink-800 to-orange-300 text-white rounded-md hover:from-pink-900 hover:to-orange-400 transition-all duration-300 transform hover:scale-105 hover:shadow-glow"
+                    className="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors"
                   >
                     Post
                   </button>
@@ -401,31 +416,6 @@ export function CreatePostButton({ onPostCreated, currentUser = { name: "You", a
           </div>
         </div>
       )}
-
-      {/* Add global styles for animations */}
-      <style jsx global>{`
-        @keyframes fadeIn {
-          from { opacity: 0; }
-          to { opacity: 1; }
-        }
-        
-        @keyframes slideIn {
-          from { transform: translateX(-10px); opacity: 0; }
-          to { transform: translateX(0); opacity: 1; }
-        }
-        
-        .animate-fadeIn {
-          animation: fadeIn 0.3s ease-in-out;
-        }
-        
-        .animate-slideIn {
-          animation: slideIn 0.3s ease-in-out forwards;
-        }
-        
-        .hover\:shadow-glow:hover {
-          box-shadow: 0 0 15px rgba(236, 72, 153, 0.5);
-        }
-      `}</style>
     </>
   );
 }
