@@ -1,12 +1,14 @@
 import { useState, useEffect } from 'react';
-import { X, Search, Plus, Home, Compass, Film, Tv, ChevronDown, ChevronRight, Heart, Settings as SettingsIcon, BookmarkPlus, User, LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { X, Search, Home, Compass, Film, Tv, ChevronDown, ChevronRight, Heart, Settings as SettingsIcon, BookmarkPlus, User, LogOut } from 'lucide-react';
 import { CreatePostButton } from './CreatePostButton.jsx';
 
 export default function MovieBrowser() {
+  const navigate = useNavigate();
   const [selectedMovie, setSelectedMovie] = useState(null);
   const [exploreExpanded, setExploreExpanded] = useState(false);
   const [activeSection, setActiveSection] = useState('movies');
-  const [activeSidebarItem, setActiveSidebarItem] = useState('home'); // Default active sidebar item
+  const [activeSidebarItem, setActiveSidebarItem] = useState('explore');
   const [searchQuery, setSearchQuery] = useState('');
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   
@@ -148,281 +150,206 @@ export default function MovieBrowser() {
   );
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white">
+    <div className="min-h-screen bg-white">
       {/* Header */}
-      <header className="flex items-center justify-between p-4 border-b border-gray-800 bg-gradient-to-r from-pink-800/20 via-black to-orange-300/20">
-        <div className="flex items-center">
-          <div className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-800 to-orange-300 flex items-center">
-            <img src="./images/logo.png" alt="RateIt Logo" className="w-20 h-14"/>
-            RateIt
-          </div>
-        </div>
-        
-        {/* Centered search bar */}
-        <div className="absolute left-1/2 transform -translate-x-1/2 w-full max-w-xl">
-          <div className="relative transition-all duration-300 hover:scale-105">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-            <input
-              type="text"
-              placeholder="Search movies"
-              value={searchQuery}
-              onChange={handleSearchChange}
-              className="w-full py-2 pl-10 pr-4 rounded-full bg-gradient-to-r from-gray-800 to-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-pink-600 transition-all duration-300"
-            />
-          </div>
-        </div>
-        
-        {/* Right section with buttons */}
-        <div className="flex items-center space-x-4">
-          <CreatePostButton />
-          
-          {/* Profile Button */}
-          <div className="relative profile-dropdown-container">
-            <button 
-              onClick={toggleProfileDropdown}
-              className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-800 hover:bg-gray-700 transition-all duration-300 overflow-hidden ring-2 ring-gray-700 hover:ring-pink-600/50 transform hover:scale-105"
-            >
-              {/* Profile picture */}
-              <img 
-                src="./images/pfp2.jpg" 
-                alt="Profile" 
-                className="w-full h-full object-cover"
-              />
-              
-              {/* Glowing effect on hover */}
-              <span className="absolute inset-0 rounded-full bg-gradient-to-r from-pink-600/0 to-orange-400/0 hover:from-pink-600/20 hover:to-orange-400/20 transition-all duration-300"></span>
-            </button>
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="flex items-center justify-between h-12">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center">
+                <img src="./images/logo.png" alt="RateIt Logo" className="h-8 w-8 mr-2"/>
+                <span className="text-xl font-bold text-gray-900">RateIt</span>
+              </div>
+            </div>
             
-            {/* Profile Dropdown with enhanced effects */}
-            {profileDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-56 bg-gradient-to-b from-gray-800 to-gray-900 border border-gray-700 rounded-lg shadow-2xl z-50 overflow-hidden transform origin-top-right transition-all duration-300 animate-fadeIn">
-                {/* Animated top highlight bar */}
-                <div className="h-1 bg-gradient-to-r from-pink-600 to-orange-400"></div>
+            {/* Search bar */}
+            <div className="flex-1 max-w-xl mx-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  placeholder="Search movies"
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  className="w-full py-1.5 pl-10 pr-4 rounded-full bg-gray-100 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+                />
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <CreatePostButton />
+              <div className="relative profile-dropdown-container">
+                <button 
+                  onClick={toggleProfileDropdown}
+                  className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+                >
+                  <img 
+                    src="./images/pfp2.jpg" 
+                    alt="Profile" 
+                    className="w-full h-full object-cover rounded-full"
+                  />
+                </button>
                 
-                <div className="p-3 border-b border-gray-700 bg-gradient-to-r from-gray-800/60 to-gray-900/60 backdrop-blur-sm">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-full bg-gray-700 overflow-hidden ring-2 ring-pink-500/30 shadow-lg transform transition-all duration-300 hover:scale-110">
-                      <img 
-                        src="./images/pfp2.jpg" 
-                        alt="Profile" 
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="font-medium text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-orange-300">User</span>
+                {profileDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg border border-gray-200">
+                    <div className="p-2">
+                      <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md flex items-center">
+                        <User size={16} className="mr-2" />
+                        View Profile
+                      </button>
+                      <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md flex items-center">
+                        <LogOut size={16} className="mr-2" />
+                        Log Out
+                      </button>
                     </div>
                   </div>
-                </div>
-                
-                <div className="p-2 backdrop-blur-sm">
-                  <button className="w-full text-left p-3 rounded-md hover:bg-gradient-to-r hover:from-pink-800/30 hover:to-orange-300/30 transition-all duration-200 transform hover:translate-x-1 flex items-center">
-                    <User size={16} className="mr-2 text-pink-400" />
-                    View Profile
-                  </button>
-                  <button className="w-full text-left p-3 rounded-md hover:bg-gradient-to-r hover:from-pink-800/30 hover:to-orange-300/30 transition-all duration-200 transform hover:translate-x-1 flex items-center">
-                    <LogOut size={16} className="mr-2 text-orange-400" />
-                    Log Out
-                  </button>
-                </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         </div>
       </header>
 
       {/* Main content */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <div className="w-56 bg-gradient-to-b from-gray-900 to-black border-r border-gray-800">
-          <nav className="p-2">
-            <ul>
-              <li className="mb-2">
-                <button 
-                  onClick={() => setActiveSidebarItem('home')}
-                  className={`w-full flex items-center p-3 rounded-md transition duration-300 ${
-                    activeSidebarItem === 'home' 
-                      ? 'bg-gradient-to-r from-pink-800/30 to-orange-300/30' 
-                      : 'hover:bg-gradient-to-r hover:from-pink-800/30 hover:to-orange-300/30 transform hover:translate-x-1'
-                  }`}
-                >
-                  <Home size={20} className="mr-3 text-orange-300" />
-                  <span>Home</span>
-                </button>
-              </li>
-              <li className="mb-2">
-                <button 
-                  onClick={() => {
-                    toggleExplore();
-                    setActiveSidebarItem('explore');
-                  }}
-                  className={`w-full flex items-center justify-between p-3 rounded-md transition duration-300 ${
-                    activeSidebarItem === 'explore' 
-                      ? 'bg-gradient-to-r from-pink-800/30 to-orange-300/30' 
-                      : 'hover:bg-gradient-to-r hover:from-pink-800/30 hover:to-orange-300/30 transform hover:translate-x-1'
-                  }`}
-                >
-                  <div className="flex items-center">
-                    <Compass size={20} className="mr-3 text-pink-500" />
-                    <span>Explore</span>
-                  </div>
-                  {exploreExpanded ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />}
-                </button>
-                
-                {exploreExpanded && (
-                  <div className="ml-6 mt-1 space-y-1 animate-fadeIn">
-                    <button 
-                      className={`flex items-center p-2 rounded-md w-full text-left ${activeSection === 'movies' ? 'bg-gradient-to-r from-pink-800/40 to-orange-300/40' : 'hover:bg-gray-800'} transition duration-200`}
-                      onClick={() => {
-                        setActiveSection('movies');
-                        setActiveSidebarItem('explore');
-                      }}
-                    >
-                      <Film size={16} className="mr-2 text-orange-300" />
-                      <span>Movies</span>
-                    </button>
-                    <button 
-                      className={`flex items-center p-2 rounded-md w-full text-left ${activeSection === 'tvshows' ? 'bg-gradient-to-r from-pink-800/40 to-orange-300/40' : 'hover:bg-gray-800'} transition duration-200`}
-                      onClick={() => {
-                        setActiveSection('tvshows');
-                        setActiveSidebarItem('explore');
-                      }}
-                    >
-                      <Tv size={16} className="mr-2 text-pink-400" />
-                      <span>TV Shows</span>
-                    </button>
-                  </div>
-                )}
-              </li>
-              <li className="mb-2">
-                <button 
-                  onClick={() => setActiveSidebarItem('recommendations')}
-                  className={`w-full flex items-center p-3 rounded-md transition duration-300 ${
-                    activeSidebarItem === 'recommendations' 
-                      ? 'bg-gradient-to-r from-pink-800/30 to-orange-300/30' 
-                      : 'hover:bg-gradient-to-r hover:from-pink-800/30 hover:to-orange-300/30 transform hover:translate-x-1'
-                  }`}
-                >
-                  <Heart size={20} className="mr-3 text-pink-500" />
-                  <span>Recommendations</span>
-                </button>
-              </li>
-              <li className="mb-2">
-                <button 
-                  onClick={() => setActiveSidebarItem('settings')}
-                  className={`w-full flex items-center p-3 rounded-md transition duration-300 ${
-                    activeSidebarItem === 'settings' 
-                      ? 'bg-gradient-to-r from-pink-800/30 to-orange-300/30' 
-                      : 'hover:bg-gradient-to-r hover:from-pink-800/30 hover:to-orange-300/30 transform hover:translate-x-1'
-                  }`}
-                >
-                  <SettingsIcon size={20} className="mr-3 text-orange-300" />
-                  <span>Settings</span>
-                </button>
-              </li>
-            </ul>
-          </nav>
-        </div>
-
-        {/* Movie grid */}
-        <div className="flex-1 overflow-y-auto p-6 bg-gradient-to-b from-black via-gray-900 to-black">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-6">
-            {filteredMovies.map((movie) => (
-              <div
-                key={movie.id}
-                className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-xl overflow-hidden shadow-lg transform transition-all duration-300 hover:scale-105 hover:shadow-xl hover:shadow-pink-700/20 border border-gray-800 hover:border-orange-300/30 cursor-pointer group"
-                onClick={() => handleMovieClick(movie)}
+      <div className="max-w-5xl mx-auto px-4 py-4">
+        <div className="flex gap-6">
+          {/* Sidebar */}
+          <div className="w-64 flex-shrink-0">
+            <nav className="space-y-1">
+              <button 
+                onClick={() => {
+                  setActiveSidebarItem('home');
+                  navigate('/');
+                }}
+                className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
+                  activeSidebarItem === 'home' 
+                    ? 'bg-gray-100 text-gray-900' 
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
               >
-                <div className="p-3">
-                  <div className="rounded-lg overflow-hidden mb-3 relative">
-                    <div className="absolute inset-0 bg-gradient-to-t from-black to-transparent opacity-0 group-hover:opacity-60 transition-opacity duration-300 z-10"></div>
-                    <img
-                      src={movie.image}
-                      alt={movie.title}
-                      className="w-full object-cover aspect-[2/3]" 
-                    />
-                  </div>
-                  
-                  <div className="px-1">
-                    <h3 className="font-medium text-center text-lg group-hover:text-transparent group-hover:bg-clip-text group-hover:bg-gradient-to-r group-hover:from-pink-700 group-hover:to-orange-300 transition-all duration-300">{movie.title}</h3>
-                    <div className="flex justify-between items-center mt-2">
-                      <span className="text-gray-400 text-sm">{movie.year}</span>
-                      <span className="text-yellow-400 text-sm">{movie.rating}⭐</span>
+                <Home size={18} className="mr-3" />
+                Home
+              </button>
+              <button 
+                onClick={toggleExplore}
+                className={`w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md ${
+                  activeSidebarItem === 'explore' 
+                    ? 'bg-gray-100 text-gray-900' 
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center">
+                  <Compass size={18} className="mr-3" />
+                  Explore
+                </div>
+                {exploreExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+              </button>
+              
+              {exploreExpanded && (
+                <div className="ml-6 space-y-1">
+                  <button 
+                    onClick={() => {
+                      setActiveSection('movies');
+                      navigate('/explore/movies');
+                    }}
+                    className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
+                      activeSection === 'movies' 
+                        ? 'bg-gray-100 text-gray-900' 
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Film size={16} className="mr-3" />
+                    Movies
+                  </button>
+                  <button 
+                    onClick={() => {
+                      setActiveSection('tvshows');
+                      navigate('/explore/tvshows');
+                    }}
+                    className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
+                      activeSection === 'tvshows' 
+                        ? 'bg-gray-100 text-gray-900' 
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Tv size={16} className="mr-3" />
+                    TV Shows
+                  </button>
+                </div>
+              )}
+            </nav>
+          </div>
+
+          {/* Movies Grid */}
+          <div className="flex-1">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+              {filteredMovies.map(movie => (
+                <div
+                  key={movie.id}
+                  onClick={() => handleMovieClick(movie)}
+                  className="bg-white border border-gray-200 rounded-md overflow-hidden cursor-pointer hover:border-gray-300 transition-colors"
+                >
+                  <img src={movie.image} alt={movie.title} className="w-full h-48 object-cover" />
+                  <div className="p-4">
+                    <h3 className="text-lg font-medium text-gray-900 mb-1">{movie.title}</h3>
+                    <p className="text-gray-500 text-sm mb-2">{movie.year} • {movie.director}</p>
+                    <p className="text-gray-600 text-sm mb-3">{movie.genre}</p>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-1">
+                        <Heart size={16} className="text-red-500" />
+                        <span className="text-gray-900">{movie.rating}</span>
+                      </div>
+                      <button
+                        onClick={(e) => addToWatchlist(e, movie)}
+                        className="text-blue-500 hover:text-blue-600 transition-colors"
+                      >
+                        <BookmarkPlus size={20} />
+                      </button>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))}
+              ))}
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Modal for movie details */}
+      {/* Movie Modal */}
       {selectedMovie && (
-        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 backdrop-blur-sm">
-          <div className="bg-gradient-to-br from-gray-900 to-black rounded-lg w-full max-w-3xl relative border border-gray-800">
-            {/* Close button */}
-            <button
-              onClick={closeModal}
-              className="absolute top-4 right-4 text-gray-400 hover:text-white hover:scale-110 transition-all duration-300 z-20"
-            >
-              <X size={24} />
-            </button>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center p-4 border-b border-gray-200">
+              <h2 className="text-xl font-medium text-gray-900">{selectedMovie.title}</h2>
+              <button onClick={closeModal} className="text-gray-500 hover:text-gray-700">
+                <X size={24} />
+              </button>
+            </div>
             
-            <div className="flex flex-col md:flex-row">
-              {/* Left side - Image */}
-              <div className="w-full md:w-2/5">
-                <div className="relative h-full">
-                  <img
-                    src={selectedMovie.image}
-                    alt={selectedMovie.title}
-                    className="w-full h-full object-cover"
-                  />
-                </div>
-              </div>
-              
-              {/* Right side - Content */}
-              <div className="w-full md:w-3/5 p-5 md:p-6">
-                <div className="flex items-center mb-2">
-                  <span className="flex items-center text-yellow-400 mr-3">
-                    <span className="text-lg font-semibold">{selectedMovie.rating}</span>
-                    ⭐
-                  </span>
-                  <span className="text-gray-400">{selectedMovie.year}</span>
-                </div>
-                
-                <h2 className="text-2xl font-bold mb-3">{selectedMovie.title}</h2>
-                
-                <div className="mb-4">
-                  <h3 className="text-base font-medium mb-1">Genre</h3>
-                  <p className="text-gray-300 text-sm">{selectedMovie.genre}</p>
-                </div>
-                
-                <div className="mb-4">
-                  <h3 className="text-base font-medium mb-1">Director</h3>
-                  <p className="text-gray-300 text-sm">{selectedMovie.director}</p>
-                </div>
-                
-                <div className="mb-4">
-                  <h3 className="text-base font-medium mb-1">Synopsis</h3>
-                  <p className="text-gray-300 text-sm">{selectedMovie.description}</p>
-                </div>
-                
-                <div className="mb-5">
-                  <h3 className="text-base font-medium mb-1">Available on</h3>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedMovie.platforms.map((platform, index) => (
-                      <span key={index} className="bg-gray-800 rounded-md px-3 py-1 text-xs">{platform}</span>
-                    ))}
+            <div className="flex-1 overflow-y-auto p-4">
+              <div className="flex flex-col md:flex-row gap-6">
+                <img src={selectedMovie.image} alt={selectedMovie.title} className="w-full md:w-1/3 h-64 object-cover rounded-md" />
+                <div className="flex-1">
+                  <div className="mb-4">
+                    <p className="text-gray-500 mb-2">{selectedMovie.year} • {selectedMovie.director}</p>
+                    <p className="text-gray-700 mb-4">{selectedMovie.description}</p>
+                    <div className="flex items-center space-x-2 mb-4">
+                      <span className="text-red-500 font-semibold">{selectedMovie.rating}</span>
+                      <span className="text-gray-400">•</span>
+                      <span className="text-gray-600">{selectedMovie.genre}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-gray-500">Available on:</span>
+                      {selectedMovie.platforms.map((platform, index) => (
+                        <span key={index} className="text-blue-500">{platform}</span>
+                      ))}
+                    </div>
                   </div>
-                </div>
-                
-                {/* Add to Watchlist Button */}
-                <div>
-                  <button 
+                  <button
                     onClick={(e) => addToWatchlist(e, selectedMovie)}
-                    className="w-full bg-gradient-to-r from-pink-800 to-orange-300 text-white px-4 py-2 rounded-md hover:from-pink-900 hover:to-orange-400 transition duration-300 font-medium"
+                    className="bg-blue-500 text-white px-6 py-2 rounded-full hover:bg-blue-600 transition-colors flex items-center space-x-2"
                   >
-                    Add to Watchlist
+                    <BookmarkPlus size={20} />
+                    <span>Add to Watchlist</span>
                   </button>
                 </div>
               </div>

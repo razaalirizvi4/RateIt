@@ -1,15 +1,17 @@
 import { useState, useEffect } from 'react';
-import { X, Search, Plus, Home, Compass, Film, Tv, ChevronDown, ChevronRight, Heart, Settings as SettingsIcon, MessageSquare, ThumbsUp, ThumbsDown, Send, User, LogOut } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { X, Search, Plus, Home, Compass, Film, Tv, ChevronDown, ChevronRight, Heart, Settings as SettingsIcon, MessageSquare, ThumbsUp, ThumbsDown, Send, User, LogOut, ArrowUp, ArrowDown, Share, BookmarkPlus } from 'lucide-react';
 import { CreatePostButton } from './CreatePostButton.jsx';
 
 export default function SocialFeed() {
+  const navigate = useNavigate();
   const [selectedPost, setSelectedPost] = useState(null);
   const [exploreExpanded, setExploreExpanded] = useState(false);
   const [activeSection, setActiveSection] = useState('movies');
   const [searchQuery, setSearchQuery] = useState('');
   const [newComment, setNewComment] = useState('');
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
-  const [activeSidebarItem, setActiveSidebarItem] = useState('home'); // Track active sidebar item
+  const [activeSidebarItem, setActiveSidebarItem] = useState('home');
   
   // Sample posts data 
   const [posts, setPosts] = useState([
@@ -85,6 +87,15 @@ export default function SocialFeed() {
   const toggleExplore = () => {
     setExploreExpanded(!exploreExpanded);
     setActiveSidebarItem('explore');
+  };
+
+  const handleExploreItemClick = (section) => {
+    setActiveSection(section);
+    if (section === 'movies') {
+      navigate('/explore/movies');
+    } else if (section === 'tvshows') {
+      navigate('/explore/tvshows');
+    }
   };
 
   const handlePostClick = (post) => {
@@ -204,228 +215,210 @@ export default function SocialFeed() {
   );
 
   return (
-    <div className="flex flex-col h-screen bg-gradient-to-br from-gray-900 via-black to-gray-900 text-white">
+    <div className="min-h-screen bg-white">
       {/* Header */}
-      <header className="flex items-center justify-between p-4 border-b border-gray-800 bg-gradient-to-r from-pink-800/20 via-black to-orange-300/20">
-      <div className="flex items-center">
-          <div className="text-3xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-pink-800 to-orange-300 flex items-center">
-            <img src="./images/logo.png" alt="RateIt Logo" className="w-20 h-14"/>
-            RateIt
-          </div>
-        </div>
-        
-        {/* Centered search bar */}
-        <div className="absolute left-1/2 transform -translate-x-1/2 w-full max-w-xl">
-          <div className="relative transition-all duration-300 hover:scale-105">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-            <input
-              type="text"
-              placeholder="Search posts"
-              value={searchQuery}
-              onChange={handleSearchChange}
-              className="w-full py-2 pl-10 pr-4 rounded-full bg-gradient-to-r from-gray-800 to-gray-900 text-white focus:outline-none focus:ring-2 focus:ring-pink-600 transition-all duration-300"
-            />
-          </div>
-        </div>
-        
-        <div className="flex items-center space-x-4">
-        <CreatePostButton onPostCreated={handlePostCreated} />
-      {/* Profile Button */}
-      <div className="relative profile-dropdown-container">
-            <button 
-              onClick={toggleProfileDropdown}
-              className="flex items-center justify-center w-10 h-10 rounded-full bg-gray-800 hover:bg-gray-700 transition-all duration-300 overflow-hidden ring-2 ring-gray-700 hover:ring-pink-600/50 transform hover:scale-105"
-            >
-              {/* Profile picture */}
-              <img 
-                src="./images/pfp2.jpg" 
-                alt="Profile" 
-                className="w-full h-full object-cover"
-              />
-              
-              {/* Glowing effect on hover */}
-              <span className="absolute inset-0 rounded-full bg-gradient-to-r from-pink-600/0 to-orange-400/0 hover:from-pink-600/20 hover:to-orange-400/20 transition-all duration-300"></span>
-            </button>
+      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
+        <div className="max-w-5xl mx-auto px-4">
+          <div className="flex items-center justify-between h-12">
+            <div className="flex items-center space-x-4">
+              <div className="flex items-center">
+                <img src="./images/logo.png" alt="RateIt Logo" className="h-8 w-8 mr-2"/>
+                <span className="text-xl font-bold text-gray-900">RateIt</span>
+              </div>
+            </div>
             
-            {/* Profile Dropdown with enhanced effects */}
-            {profileDropdownOpen && (
-              <div className="absolute right-0 mt-2 w-56 bg-gradient-to-b from-gray-800 to-gray-900 border border-gray-700 rounded-lg shadow-2xl z-50 overflow-hidden transform origin-top-right transition-all duration-300 animate-fadeIn">
-                {/* Animated top highlight bar */}
-                <div className="h-1 bg-gradient-to-r from-pink-600 to-orange-400"></div>
+            {/* Search bar */}
+            <div className="flex-1 max-w-xl mx-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+                <input
+                  type="text"
+                  placeholder="Search posts"
+                  value={searchQuery}
+                  onChange={handleSearchChange}
+                  className="w-full py-1.5 pl-10 pr-4 rounded-full bg-gray-100 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+                />
+              </div>
+            </div>
+            
+            <div className="flex items-center space-x-2">
+              <CreatePostButton onPostCreated={handlePostCreated} />
+              <div className="relative profile-dropdown-container">
+                <button 
+                  onClick={toggleProfileDropdown}
+                  className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+                >
+                  <img 
+                    src="./images/pfp2.jpg" 
+                    alt="Profile" 
+                    className="w-full h-full object-cover rounded-full"
+                  />
+                </button>
                 
-                <div className="p-3 border-b border-gray-700 bg-gradient-to-r from-gray-800/60 to-gray-900/60 backdrop-blur-sm">
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-full bg-gray-700 overflow-hidden ring-2 ring-pink-500/30 shadow-lg transform transition-all duration-300 hover:scale-110">
-                      <img 
-                        src="./images/pfp2.jpg" 
-                        alt="Profile" 
-                        className="w-full h-full object-cover"
-                      />
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="font-medium text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-orange-300">User</span>
+                {profileDropdownOpen && (
+                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg border border-gray-200">
+                    <div className="p-2">
+                      <button 
+                        onClick={() => {
+                          navigate('/profile');
+                          setProfileDropdownOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md flex items-center"
+                      >
+                        <User size={16} className="mr-2" />
+                        View Profile
+                      </button>
+                      <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md flex items-center">
+                        <LogOut size={16} className="mr-2" />
+                        Log Out
+                      </button>
                     </div>
                   </div>
-                </div>
-                
-                <div className="p-2 backdrop-blur-sm">
-                  <button className="w-full text-left p-3 rounded-md hover:bg-gradient-to-r hover:from-pink-800/30 hover:to-orange-300/30 transition-all duration-200 transform hover:translate-x-1 flex items-center">
-                    <User size={16} className="mr-2 text-pink-400" />
-                    View Profile
-                  </button>
-                  <button className="w-full text-left p-3 rounded-md hover:bg-gradient-to-r hover:from-pink-800/30 hover:to-orange-300/30 transition-all duration-200 transform hover:translate-x-1 flex items-center">
-                    <LogOut size={16} className="mr-2 text-orange-400" />
-                    Log Out
-                  </button>
-                </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
-          </div>
+        </div>
       </header>
 
       {/* Main content */}
-      <div className="flex flex-1 overflow-hidden">
-        {/* Sidebar */}
-        <div className="w-56 bg-gradient-to-b from-gray-900 to-black border-r border-gray-800">
-          <nav className="p-2">
-            <ul>
-              <li className="mb-2">
-                <button 
-                  onClick={() => setActiveSidebarItem('home')}
-                  className={`flex items-center p-3 rounded-md w-full text-left transition duration-300 ${
-                    activeSidebarItem === 'home' 
-                      ? 'bg-gradient-to-r from-pink-800/30 to-orange-300/30' 
-                      : 'hover:bg-gradient-to-r hover:from-pink-800/30 hover:to-orange-300/30 transform hover:translate-x-1'
-                  }`}
-                >
-                  <Home size={20} className="mr-3 text-orange-300" />
-                  <span>Home</span>
-                </button>
-              </li>
-              <li className="mb-2">
-                <button 
-                  onClick={toggleExplore}
-                  className={`w-full flex items-center justify-between p-3 rounded-md transition duration-300 ${
-                    activeSidebarItem === 'explore' 
-                      ? 'bg-gradient-to-r from-pink-800/30 to-orange-300/30' 
-                      : 'hover:bg-gradient-to-r hover:from-pink-800/30 hover:to-orange-300/30 transform hover:translate-x-1'
-                  }`}
-                >
-                  <div className="flex items-center">
-                    <Compass size={20} className="mr-3 text-pink-500" />
-                    <span>Explore</span>
-                  </div>
-                  {exploreExpanded ? <ChevronDown size={16} className="text-gray-400" /> : <ChevronRight size={16} className="text-gray-400" />}
-                </button>
-                
-                {exploreExpanded && (
-                  <div className="ml-6 mt-1 space-y-1">
-                    <button 
-                      className={`flex items-center p-2 rounded-md w-full text-left ${activeSection === 'movies' ? 'bg-gradient-to-r from-pink-800/40 to-orange-300/40' : 'hover:bg-gray-800'} transition duration-200`}
-                      onClick={() => setActiveSection('movies')}
-                    >
-                      <Film size={16} className="mr-2 text-orange-300" />
-                      <span>Movies</span>
-                    </button>
-                    <button 
-                      className={`flex items-center p-2 rounded-md w-full text-left ${activeSection === 'tvshows' ? 'bg-gradient-to-r from-pink-800/40 to-orange-300/40' : 'hover:bg-gray-800'} transition duration-200`}
-                      onClick={() => setActiveSection('tvshows')}
-                    >
-                      <Tv size={16} className="mr-2 text-pink-400" />
-                      <span>TV Shows</span>
-                    </button>
-                  </div>
-                )}
-              </li>
-              <li className="mb-2">
-                <button 
-                  onClick={() => setActiveSidebarItem('recommendations')}
-                  className={`flex items-center p-3 rounded-md w-full text-left transition duration-300 ${
-                    activeSidebarItem === 'recommendations' 
-                      ? 'bg-gradient-to-r from-pink-800/30 to-orange-300/30' 
-                      : 'hover:bg-gradient-to-r hover:from-pink-800/30 hover:to-orange-300/30 transform hover:translate-x-1'
-                  }`}
-                >
-                  <Heart size={20} className="mr-3 text-pink-500" />
-                  <span>Recommendations</span>
-                </button>
-              </li>
-              <li className="mb-2">
-                <button 
-                  onClick={() => setActiveSidebarItem('settings')}
-                  className={`flex items-center p-3 rounded-md w-full text-left transition duration-300 ${
-                    activeSidebarItem === 'settings' 
-                      ? 'bg-gradient-to-r from-pink-800/30 to-orange-300/30' 
-                      : 'hover:bg-gradient-to-r hover:from-pink-800/30 hover:to-orange-300/30 transform hover:translate-x-1'
-                  }`}
-                >
-                  <SettingsIcon size={20} className="mr-3 text-orange-300" />
-                  <span>Settings</span>
-                </button>
-              </li>
-            </ul>
-          </nav>
-        </div>
+      <div className="max-w-5xl mx-auto px-4 py-4">
+        <div className="flex gap-6">
+          {/* Sidebar */}
+          <div className="w-64 flex-shrink-0">
+            <nav className="space-y-1">
+              <button 
+                onClick={() => {
+                  setActiveSidebarItem('home');
+                  navigate('/');
+                }}
+                className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
+                  activeSidebarItem === 'home' 
+                    ? 'bg-gray-100 text-gray-900' 
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <Home size={18} className="mr-3" />
+                Home
+              </button>
+              <button 
+                onClick={toggleExplore}
+                className={`w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md ${
+                  activeSidebarItem === 'explore' 
+                    ? 'bg-gray-100 text-gray-900' 
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <div className="flex items-center">
+                  <Compass size={18} className="mr-3" />
+                  Explore
+                </div>
+                {exploreExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
+              </button>
+              
+              {exploreExpanded && (
+                <div className="ml-6 space-y-1">
+                  <button 
+                    onClick={() => handleExploreItemClick('movies')}
+                    className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
+                      activeSection === 'movies' 
+                        ? 'bg-gray-100 text-gray-900' 
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Film size={16} className="mr-3" />
+                    Movies
+                  </button>
+                  <button 
+                    onClick={() => handleExploreItemClick('tvshows')}
+                    className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
+                      activeSection === 'tvshows' 
+                        ? 'bg-gray-100 text-gray-900' 
+                        : 'text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    <Tv size={16} className="mr-3" />
+                    TV Shows
+                  </button>
+                </div>
+              )}
+              <button 
+                onClick={() => {
+                  setActiveSidebarItem('recommendations');
+                  navigate('/recommendations');
+                }}
+                className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
+                  activeSidebarItem === 'recommendations' 
+                    ? 'bg-gray-100 text-gray-900' 
+                    : 'text-gray-600 hover:bg-gray-50'
+                }`}
+              >
+                <ThumbsUp size={18} className="mr-3" />
+                Recommendations
+              </button>
+            </nav>
+          </div>
 
-        {/* Posts feed */}
-        <div className="flex-1 overflow-y-auto bg-gradient-to-b from-black via-gray-900 to-black">
-          <div className="max-w-2xl mx-auto py-6">
+          {/* Posts feed */}
+          <div className="flex-1">
             {filteredPosts.map((post) => (
               <div 
                 key={post.id}
-                className="bg-gradient-to-b from-gray-800 to-gray-900 rounded-xl overflow-hidden shadow-lg mb-6 border border-gray-800 hover:border-orange-300/30 transition-all duration-300"
+                className="bg-white border border-gray-200 rounded-md mb-3 hover:border-gray-300 transition-colors"
               >
-                {/* Post header */}
-                <div className="p-4 flex items-center">
-                  <img src={post.authorAvatar} alt={post.author} className="w-10 h-10 rounded-full mr-3" />
-                  <div>
-                    <div className="font-medium">{post.author}</div>
-                    <div className="text-gray-400 text-sm">{post.displayTime || post.timestamp}</div>
+                <div className="flex">
+                  {/* Vote buttons */}
+                  <div className="flex flex-col items-center px-2 py-2 bg-gray-50 rounded-l-md">
+                    <button 
+                      onClick={() => handleVote(post.id, 'up')}
+                      className={`p-1 rounded hover:bg-gray-200 transition ${post.userVote === 'up' ? 'text-orange-500' : 'text-gray-400'}`}
+                    >
+                      <ArrowUp size={20} />
+                    </button>
+                    <span className="text-xs font-medium text-gray-900">{post.upvotes - post.downvotes}</span>
+                    <button 
+                      onClick={() => handleVote(post.id, 'down')}
+                      className={`p-1 rounded hover:bg-gray-200 transition ${post.userVote === 'down' ? 'text-blue-500' : 'text-gray-400'}`}
+                    >
+                      <ArrowDown size={20} />
+                    </button>
                   </div>
-                </div>
-                
-                {/* Post content */}
-                <div className="px-4 pb-3">
-                  <h3 className="text-xl font-medium mb-2">{post.title}</h3>
-                  <p className="text-gray-300 mb-4">{post.content}</p>
-                  
-                  {post.image && (
-                    <div className="mb-4 rounded-lg overflow-hidden">
-                      <img src={post.image} alt="Post image" className="w-full" />
-                    </div>
-                  )}
-                  
-                  {/* Post actions */}
-                  <div className="flex items-center justify-between mt-4 border-t border-gray-700 pt-3">
-                    <div className="flex items-center space-x-6">
-                      <div className="flex items-center space-x-2">
-                        <button 
-                          onClick={() => handleVote(post.id, 'up')}
-                          className={`p-1 rounded hover:bg-gray-700 transition ${post.userVote === 'up' ? 'text-orange-300' : 'text-gray-400'}`}
-                        >
-                          <ThumbsUp size={18} />
-                        </button>
-                        <span>{post.upvotes}</span>
-                      </div>
-                      <div className="flex items-center space-x-2">
-                        <button 
-                          onClick={() => handleVote(post.id, 'down')}
-                          className={`p-1 rounded hover:bg-gray-700 transition ${post.userVote === 'down' ? 'text-pink-500' : 'text-gray-400'}`}
-                        >
-                          <ThumbsDown size={18} />
-                        </button>
-                        <span>{post.downvotes}</span>
-                      </div>
+
+                  {/* Post content */}
+                  <div className="flex-1 p-3">
+                    <div className="flex items-center text-xs text-gray-500 mb-1">
+                      <img src={post.authorAvatar} alt={post.author} className="w-5 h-5 rounded-full mr-1" />
+                      <span className="font-medium text-gray-900">r/{post.author}</span>
+                      <span className="mx-1">•</span>
+                      <span>{post.timestamp}</span>
                     </div>
                     
-                    <button 
-                      onClick={() => handlePostClick(post)}
-                      className="flex items-center text-gray-400 hover:text-white transition"
-                    >
-                      <MessageSquare size={18} className="mr-1" />
-                      <span>{post.comments.length} Comments</span>
-                    </button>
+                    <h3 className="text-lg font-medium text-gray-900 mb-1">{post.title}</h3>
+                    <p className="text-gray-800 text-sm mb-2">{post.content}</p>
+                    
+                    {post.image && (
+                      <div className="mb-2 rounded-md overflow-hidden">
+                        <img src={post.image} alt="Post image" className="w-full" />
+                      </div>
+                    )}
+                    
+                    <div className="flex items-center text-gray-500 text-xs">
+                      <button 
+                        onClick={() => handlePostClick(post)}
+                        className="flex items-center hover:bg-gray-100 rounded-full px-2 py-1"
+                      >
+                        <MessageSquare size={16} className="mr-1" />
+                        {post.comments.length} Comments
+                      </button>
+                      <button className="flex items-center hover:bg-gray-100 rounded-full px-2 py-1 ml-2">
+                        <Share size={16} className="mr-1" />
+                        Share
+                      </button>
+                      <button className="flex items-center hover:bg-gray-100 rounded-full px-2 py-1 ml-2">
+                        <BookmarkPlus size={16} className="mr-1" />
+                        Save
+                      </button>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -434,103 +427,96 @@ export default function SocialFeed() {
         </div>
       </div>
 
-      {/* Modal for post comments */}
+      {/* Post Modal */}
       {selectedPost && (
-        <div className="fixed inset-0 bg-black bg-opacity-80 flex items-center justify-center z-50 backdrop-blur-sm">
-          <div className="bg-gradient-to-br from-gray-900 to-black rounded-lg w-full max-w-3xl h-3/4 relative border border-gray-800 flex flex-col">
-            {/* Close button */}
-            <button
-              onClick={closeModal}
-              className="absolute top-4 right-4 text-gray-400 hover:text-white hover:scale-110 transition-all duration-300 z-20"
-            >
-              <X size={24} />
-            </button>
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] flex flex-col">
+            <div className="flex justify-between items-center p-4 border-b border-gray-200">
+              <h2 className="text-xl font-medium text-gray-900">Comments</h2>
+              <button onClick={closeModal} className="text-gray-500 hover:text-gray-700">
+                <X size={24} />
+              </button>
+            </div>
             
-            <div className="flex-1 overflow-y-auto p-6">
+            <div className="flex-1 overflow-y-auto p-4">
               {/* Original post */}
-              <div className="mb-6 pb-6 border-b border-gray-700">
-                <div className="flex items-center mb-4">
-                  <img src={selectedPost.authorAvatar} alt={selectedPost.author} className="w-10 h-10 rounded-full mr-3" />
-                  <div>
-                    <div className="font-medium">{selectedPost.author}</div>
-                    <div className="text-gray-400 text-sm">{selectedPost.displayTime || selectedPost.timestamp}</div>
-                  </div>
+              <div className="bg-gray-50 rounded-md p-4 mb-4">
+                <div className="flex items-center text-xs text-gray-500 mb-2">
+                  <img src={selectedPost.authorAvatar} alt={selectedPost.author} className="w-5 h-5 rounded-full mr-1" />
+                  <span className="font-medium text-gray-900">r/{selectedPost.author}</span>
+                  <span className="mx-1">•</span>
+                  <span>{selectedPost.timestamp}</span>
                 </div>
                 
-                <h2 className="text-xl font-medium mb-3">{selectedPost.title}</h2>
-                <p className="text-gray-300 mb-4">{selectedPost.content}</p>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">{selectedPost.title}</h3>
+                <p className="text-gray-800 text-sm mb-3">{selectedPost.content}</p>
                 
                 {selectedPost.image && (
-                  <div className="mb-4 rounded-lg overflow-hidden">
+                  <div className="mb-3 rounded-md overflow-hidden">
                     <img src={selectedPost.image} alt="Post image" className="w-full" />
                   </div>
                 )}
                 
-                <div className="flex items-center space-x-6">
-                  <div className="flex items-center space-x-2">
+                <div className="flex items-center text-gray-500 text-xs">
+                  <div className="flex items-center">
                     <button 
                       onClick={() => handleVote(selectedPost.id, 'up')}
-                      className={`p-1 rounded hover:bg-gray-700 transition ${selectedPost.userVote === 'up' ? 'text-orange-300' : 'text-gray-400'}`}
+                      className={`p-1 rounded hover:bg-gray-200 transition ${selectedPost.userVote === 'up' ? 'text-orange-500' : 'text-gray-400'}`}
                     >
-                      <ThumbsUp size={18} />
+                      <ArrowUp size={16} />
                     </button>
-                    <span>{selectedPost.upvotes}</span>
-                  </div>
-                  <div className="flex items-center space-x-2">
+                    <span className="mx-1 font-medium text-gray-900">{selectedPost.upvotes - selectedPost.downvotes}</span>
                     <button 
                       onClick={() => handleVote(selectedPost.id, 'down')}
-                      className={`p-1 rounded hover:bg-gray-700 transition ${selectedPost.userVote === 'down' ? 'text-pink-500' : 'text-gray-400'}`}
+                      className={`p-1 rounded hover:bg-gray-200 transition ${selectedPost.userVote === 'down' ? 'text-blue-500' : 'text-gray-400'}`}
                     >
-                      <ThumbsDown size={18} />
+                      <ArrowDown size={16} />
                     </button>
-                    <span>{selectedPost.downvotes}</span>
                   </div>
                 </div>
               </div>
               
-              {/* Comments section */}
-              <div>
-                <h3 className="text-lg font-medium mb-4">Comments ({selectedPost.comments.length})</h3>
-                
-                <div className="space-y-4">
-                  {selectedPost.comments.map(comment => (
-                    <div key={comment.id} className="bg-gray-800/50 p-3 rounded-lg">
-                      <div className="flex items-center mb-2">
-                        <img src={comment.authorAvatar} alt={comment.author} className="w-8 h-8 rounded-full mr-2" />
-                        <div>
-                          <div className="font-medium text-sm">{comment.author}</div>
-                          <div className="text-gray-400 text-xs">{comment.timestamp}</div>
-                        </div>
-                      </div>
-                      <p className="text-gray-300 text-sm">{comment.content}</p>
-                      <div className="flex items-center mt-2 text-sm">
-                        <button className="flex items-center text-gray-400 hover:text-orange-300 transition mr-2">
-                          <ThumbsUp size={14} className="mr-1" />
-                          <span>{comment.upvotes}</span>
-                        </button>
-                        <button className="text-gray-400 hover:text-white transition">Reply</button>
-                      </div>
+              {/* Comments */}
+              <div className="space-y-4">
+                {selectedPost.comments.map(comment => (
+                  <div key={comment.id} className="bg-white border border-gray-200 rounded-md p-3">
+                    <div className="flex items-center text-xs text-gray-500 mb-2">
+                      <img src={comment.authorAvatar} alt={comment.author} className="w-5 h-5 rounded-full mr-1" />
+                      <span className="font-medium text-gray-900">r/{comment.author}</span>
+                      <span className="mx-1">•</span>
+                      <span>{comment.timestamp}</span>
                     </div>
-                  ))}
-                </div>
+                    <p className="text-gray-800 text-sm">{comment.content}</p>
+                    <div className="flex items-center mt-2 text-xs text-gray-500">
+                      <button className="flex items-center hover:bg-gray-100 rounded-full px-2 py-1">
+                        <ArrowUp size={14} className="mr-1" />
+                        {comment.upvotes}
+                      </button>
+                      <button className="flex items-center hover:bg-gray-100 rounded-full px-2 py-1 ml-2">
+                        <MessageSquare size={14} className="mr-1" />
+                        Reply
+                      </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
             
             {/* Comment input */}
-            <div className="p-4 border-t border-gray-700">
+            <div className="p-4 border-t border-gray-200">
               <form onSubmit={handleCommentSubmit} className="flex items-center">
                 <input
                   type="text"
-                  placeholder="Write a comment..."
+                  placeholder="What are your thoughts?"
                   value={newComment}
                   onChange={(e) => setNewComment(e.target.value)}
-                  className="flex-1 bg-gray-800 rounded-l-full py-2 px-4 focus:outline-none focus:ring-1 focus:ring-orange-300 text-white"
+                  className="flex-1 bg-gray-100 rounded-full py-2 px-4 text-sm text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
                 />
                 <button 
                   type="submit"
-                  className="bg-gradient-to-r from-pink-800 to-orange-300 text-white p-2 rounded-r-full hover:from-pink-900 hover:to-orange-400 transition"
+                  className="ml-2 bg-blue-500 text-white px-4 py-2 rounded-full text-sm font-medium hover:bg-blue-600 transition-colors"
                 >
-                  <Send size={18} />
+                  Comment
                 </button>
               </form>
             </div>
