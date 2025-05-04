@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { X, Search, Home, Compass, Film, Tv, ChevronDown, ChevronRight, Heart, Settings as SettingsIcon, BookmarkPlus, User, LogOut } from 'lucide-react';
 import { CreatePostButton } from './CreatePostButton.jsx';
+import axios from 'axios'; // Import axios for making API calls
 
 export default function MovieBrowser() {
   const navigate = useNavigate();
@@ -11,97 +12,21 @@ export default function MovieBrowser() {
   const [activeSidebarItem, setActiveSidebarItem] = useState('explore');
   const [searchQuery, setSearchQuery] = useState('');
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
-  
-  const movies = [
-    {
-      id: 1,
-      title: "Inception",
-      image: "./images/movie1.jpg",
-      genre: "Action, Adventure, Sci-Fi",
-      platforms: ["Netflix", "HBO Max"],
-      rating: 4.8,
-      year: 2010,
-      director: "Christopher Nolan",
-      description: "A thief who steals corporate secrets through the use of dream-sharing technology is given the inverse task of planting an idea into the mind of a C.E.O."
-    },
-    {
-      id: 2,
-      title: "The Shawshank Redemption",
-      image: "./images/movie1.jpg",
-      genre: "Drama",
-      platforms: ["Netflix", "Amazon Prime"],
-      rating: 4.9,
-      year: 1994,
-      director: "Frank Darabont",
-      description: "Two imprisoned men bond over a number of years, finding solace and eventual redemption through acts of common decency."
-    },
-    {
-      id: 3,
-      title: "The Dark Knight",
-      image: "./images/movie1.jpg",
-      genre: "Action, Crime, Drama",
-      platforms: ["HBO Max"],
-      rating: 4.9,
-      year: 2008,
-      director: "Christopher Nolan",
-      description: "When the menace known as the Joker wreaks havoc and chaos on the people of Gotham, Batman must accept one of the greatest psychological and physical tests of his ability to fight injustice."
-    },
-    {
-      id: 4,
-      title: "Pulp Fiction",
-      image: "./images/movie1.jpg",
-      genre: "Crime, Drama",
-      platforms: ["Amazon Prime", "Netflix"],
-      rating: 4.7,
-      year: 1994,
-      director: "Quentin Tarantino",
-      description: "The lives of two mob hitmen, a boxer, a gangster and his wife, and a pair of diner bandits intertwine in four tales of violence and redemption."
-    },
-    {
-      id: 5,
-      title: "The Godfather",
-      image: "./images/movie1.jpg",
-      genre: "Crime, Drama",
-      platforms: ["Netflix", "Paramount+"],
-      rating: 4.9,
-      year: 1972,
-      director: "Francis Ford Coppola",
-      description: "The aging patriarch of an organized crime dynasty transfers control of his clandestine empire to his reluctant son."
-    },
-    {
-      id: 6,
-      title: "Interstellar",
-      image: "./images/movie1.jpg",
-      genre: "Adventure, Drama, Sci-Fi",
-      platforms: ["Paramount+"],
-      rating: 4.7,
-      year: 2014,
-      director: "Christopher Nolan",
-      description: "A team of explorers travel through a wormhole in space in an attempt to ensure humanity's survival."
-    },
-    {
-      id: 7,
-      title: "The Matrix",
-      image: "./images/movie1.jpg",
-      genre: "Action, Sci-Fi",
-      platforms: ["HBO Max", "Amazon Prime"],
-      rating: 4.8,
-      year: 1999,
-      director: "Lana Wachowski, Lilly Wachowski",
-      description: "A computer hacker learns from mysterious rebels about the true nature of his reality and his role in the war against its controllers."
-    },
-    {
-      id: 8,
-      title: "Parasite",
-      image: "./images/movie1.jpg",
-      genre: "Comedy, Drama, Thriller",
-      platforms: ["Hulu"],
-      rating: 4.8,
-      year: 2019,
-      director: "Bong Joon Ho",
-      description: "Greed and class discrimination threaten the newly formed symbiotic relationship between the wealthy Park family and the destitute Kim clan."
-    }
-  ];
+  const [movies, setMovies] = useState([]); // State to hold movies
+
+  // Fetch movies from the database
+  useEffect(() => {
+    const fetchMovies = async () => {
+      try {
+        const response = await axios.get('http://localhost:3001/api/movies'); // Updated to the correct port
+        setMovies(response.data); // Set the movies state with the fetched data
+      } catch (error) {
+        console.error('Error fetching movies:', error);
+      }
+    };
+
+    fetchMovies(); // Call the fetchMovies function
+  }, []); // Empty dependency array to run only once on component mount
 
   const toggleExplore = () => {
     setExploreExpanded(!exploreExpanded);
@@ -121,8 +46,8 @@ export default function MovieBrowser() {
 
   const addToWatchlist = (e, movie) => {
     e.stopPropagation(); 
-    console.log(`Added ${movie.title} to watchlist`);
-    alert(`Added ${movie.title} to watchlist`);
+    console.log(`Added ${movie.name} to watchlist`);
+    alert(`Added ${movie.name} to watchlist`);
   };
 
   const toggleProfileDropdown = () => {
@@ -144,10 +69,10 @@ export default function MovieBrowser() {
   }, [profileDropdownOpen]);
 
   const filteredMovies = movies.filter(movie => 
-    movie.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    movie.genre.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    movie.director.toLowerCase().includes(searchQuery.toLowerCase())
+    (movie.name && movie.name.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (movie.genre && movie.genre.toLowerCase().includes(searchQuery.toLowerCase()))
   );
+
 
   return (
     <div className="min-h-screen bg-white">
@@ -289,23 +214,10 @@ export default function MovieBrowser() {
                   onClick={() => handleMovieClick(movie)}
                   className="bg-white border border-gray-200 rounded-md overflow-hidden cursor-pointer hover:border-gray-300 transition-colors"
                 >
-                  <img src={movie.image} alt={movie.title} className="w-full h-48 object-cover" />
+                  <img src={movie.posters} alt={movie.name} className="w-full h-48 object-cover" />
                   <div className="p-4">
-                    <h3 className="text-lg font-medium text-gray-900 mb-1">{movie.title}</h3>
-                    <p className="text-gray-500 text-sm mb-2">{movie.year} • {movie.director}</p>
+                    <h3 className="text-lg font-medium text-gray-900 mb-1">{movie.name}</h3>
                     <p className="text-gray-600 text-sm mb-3">{movie.genre}</p>
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center space-x-1">
-                        <Heart size={16} className="text-red-500" />
-                        <span className="text-gray-900">{movie.rating}</span>
-                      </div>
-                      <button
-                        onClick={(e) => addToWatchlist(e, movie)}
-                        className="text-blue-500 hover:text-blue-600 transition-colors"
-                      >
-                        <BookmarkPlus size={20} />
-                      </button>
-                    </div>
                   </div>
                 </div>
               ))}
@@ -319,7 +231,7 @@ export default function MovieBrowser() {
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] flex flex-col">
             <div className="flex justify-between items-center p-4 border-b border-gray-200">
-              <h2 className="text-xl font-medium text-gray-900">{selectedMovie.title}</h2>
+              <h2 className="text-xl font-medium text-gray-900">{selectedMovie.name}</h2>
               <button onClick={closeModal} className="text-gray-500 hover:text-gray-700">
                 <X size={24} />
               </button>
@@ -327,10 +239,10 @@ export default function MovieBrowser() {
             
             <div className="flex-1 overflow-y-auto p-4">
               <div className="flex flex-col md:flex-row gap-6">
-                <img src={selectedMovie.image} alt={selectedMovie.title} className="w-full md:w-1/3 h-64 object-cover rounded-md" />
+                <img src={selectedMovie.posters} alt={selectedMovie.name} className="w-full md:w-1/3 h-64 object-cover rounded-md" />
                 <div className="flex-1">
                   <div className="mb-4">
-                    <p className="text-gray-500 mb-2">{selectedMovie.year} • {selectedMovie.director}</p>
+                    <p className="text-gray-500 mb-2">{selectedMovie.release_year} • {selectedMovie.director}</p>
                     <p className="text-gray-700 mb-4">{selectedMovie.description}</p>
                     <div className="flex items-center space-x-2 mb-4">
                       <span className="text-red-500 font-semibold">{selectedMovie.rating}</span>
@@ -339,9 +251,7 @@ export default function MovieBrowser() {
                     </div>
                     <div className="flex items-center space-x-2">
                       <span className="text-gray-500">Available on:</span>
-                      {selectedMovie.platforms.map((platform, index) => (
-                        <span key={index} className="text-blue-500">{platform}</span>
-                      ))}
+                      
                     </div>
                   </div>
                   <button
