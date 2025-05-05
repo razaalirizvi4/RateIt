@@ -10,17 +10,7 @@ import Recommendations from './Recommendations';
 
 function App() {
   useEffect(() => {
-    const testConnection = async () => {
-      try {
-        const response = await fetch('http://localhost:5000/api/test-connection');
-        const data = await response.json();
-        console.log('Database connection test:', data.message);
-      } catch (error) {
-        console.error('Error testing database connection:', error);
-      }
-    };
-
-    testConnection();
+    
   }, []);
 
   return (

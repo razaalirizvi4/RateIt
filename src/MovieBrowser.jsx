@@ -218,6 +218,14 @@ export default function MovieBrowser() {
                   <div className="p-4">
                     <h3 className="text-lg font-medium text-gray-900 mb-1">{movie.name}</h3>
                     <p className="text-gray-600 text-sm mb-3">{movie.genre}</p>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-red-500 font-semibold">{movie.rating}</span>
+                      <BookmarkPlus 
+                        size={16} 
+                        className="text-blue-500 cursor-pointer hover:text-blue-600" 
+                        onClick={(e) => addToWatchlist(e, movie)} 
+                      />
+                    </div>
                   </div>
                 </div>
               ))}

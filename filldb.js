@@ -34,6 +34,15 @@ const fetchGenres = async () => {
     return response.data.genres; // Returns an array of genre objects
 };
 
+let genreMap = {}; // Define genreMap globally
+
+const initializeGenres = async () => {
+    const genresList = await fetchGenres();
+    genresList.forEach(genre => {
+        genreMap[genre.id] = genre.name; // Create a mapping of id to name
+    });
+};
+
 const updateMovieGenres = async () => {
     try {
         // Fetch genres first
@@ -86,7 +95,7 @@ const updateMovieDetails = async () => {
                 const searchResponse = await axios.get(`https://api.themoviedb.org/3/search/movie`, {
                     headers: {
                         accept: 'application/json',
-                        Authorization: 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIzNjYyZjViNmJiZjY5YTlhMTNmOWUzYTQxZGQ3YjExNyIsIm5iZiI6MTc0NjM1NTM2Mi43MjEsInN1YiI6IjY4MTc0NGEyNzhlMzI5YzJlOWY0ODJjMiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.nn0ri6eIyjy8k12I4HkZ3Rn-VeNxVfU_eKHNDIK3lGA', // Replace with your actual API key
+                        Authorization: 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIzNjYyZjViNmJiZjY5YTlhMTNmOWUzYTQxZGQ3YjExNyIsIm5iZiI6MTc0NjM1NTM2Mi43MjEsInN1YiI6IjY4MTc0NGEyNzhlMzI5YzJlOWY0ODJjMiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.nn0ri6eIyjy8k12I4HkZ3Rn-VeNxVfU_eKHNDIK3lGA' // Replace with your actual API key
                     },
                     params: {
                         query: name,
@@ -132,13 +141,12 @@ const updateMovieDetails = async () => {
     }
 };
 
-// Existing fetchMovies function
 const fetchMovies = async () => {
     try {
+        await initializeGenres(); // Ensure genres are initialized before fetching movies
         let currentPage = 1;
-        let totalPages = 1; // Initialize totalPages to 1 to enter the loop
+        let totalPages = 1;
 
-        // Connect to the database
         const pool = await sql.connect(dbConfig);
 
         while (currentPage <= totalPages) {
@@ -150,21 +158,18 @@ const fetchMovies = async () => {
             });
 
             const movies = response.data.results;
-            totalPages = response.data.total_pages; // Get the total number of pages
+            totalPages = response.data.total_pages;
 
-            // Insert movies into the MOVIES table
             for (const movie of movies) {
                 const { title, genre_ids, poster_path } = movie;
-                const genres = genre_ids.map(id => genreMap[id]).join(', '); // Map IDs to names
-                const posterUrl = `https://image.tmdb.org/t/p/w500${poster_path}`; // Construct the full poster URL
+                const genres = genre_ids.map(id => genreMap[id]).join(', ');
+                const posterUrl = `https://image.tmdb.org/t/p/w500${poster_path}`;
 
-                // Check if the movie already exists
                 const existingMovie = await pool.request()
                     .input('name', sql.VarChar, title)
                     .query(`SELECT COUNT(*) AS count FROM MOVIES WHERE name = @name`);
 
                 if (existingMovie.recordset[0].count === 0) {
-                    // Use parameterized query to prevent SQL injection and handle quotes
                     await pool.request()
                         .input('name', sql.VarChar, title)
                         .input('genre', sql.VarChar, genres)
@@ -177,12 +182,88 @@ const fetchMovies = async () => {
             }
 
             console.log(`Processed movies from page ${currentPage}`);
-            currentPage++; // Move to the next page
+            currentPage++;
         }
 
         console.log('All movies processed successfully!');
     } catch (error) {
         console.error('Error fetching movies:', error);
+    }
+};
+
+const fetchTVShows = async () => {
+    try {
+        // Fetch genres first
+        const genresList = await fetchGenres();
+        const genreMap = {};
+        genresList.forEach(genre => {
+            genreMap[genre.id] = genre.name; // Create a mapping of id to name
+        });
+
+        let currentPage = 1;
+        let totalPages = 1;
+
+        const pool = await sql.connect(dbConfig);
+
+        while (currentPage <= totalPages) {
+            const response = await axios.get(`https://api.themoviedb.org/3/tv/popular?page=${currentPage}`, {
+                headers: {
+                    accept: 'application/json',
+                    Authorization: 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIzNjYyZjViNmJiZjY5YTlhMTNmOWUzYTQxZGQ3YjExNyIsIm5iZiI6MTc0NjM1NTM2Mi43MjEsInN1YiI6IjY4MTc0NGEyNzhlMzI5YzJlOWY0ODJjMiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.nn0ri6eIyjy8k12I4HkZ3Rn-VeNxVfU_eKHNDIK3lGA' // Replace with your actual API key
+                }
+            });
+
+            const tvShows = response.data.results;
+            totalPages = response.data.total_pages;
+
+            for (const show of tvShows) {
+                const { id, name, genre_ids, poster_path, popularity, vote_average } = show;
+                const posterUrl = `https://image.tmdb.org/t/p/w500${poster_path}`;
+
+                // Fetch detailed information for each show
+                const detailsResponse = await axios.get(`https://api.themoviedb.org/3/tv/${id}`, {
+                    headers: {
+                        accept: 'application/json',
+                        Authorization: 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIzNjYyZjViNmJiZjY5YTlhMTNmOWUzYTQxZGQ3YjExNyIsIm5iZiI6MTc0NjM1NTM2Mi43MjEsInN1YiI6IjY4MTc0NGEyNzhlMzI5YzJlOWY0ODJjMiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.nn0ri6eIyjy8k12I4HkZ3Rn-VeNxVfU_eKHNDIK3lGA' // Replace with your actual API key
+                    }
+                });
+
+                const detailedShow = detailsResponse.data;
+                const number_of_seasons = detailedShow.number_of_seasons || 0; // Default to 0 if missing
+                const number_of_episodes = detailedShow.number_of_episodes || 0; // Default to 0 if missing
+
+                // Get the first genre ID and map it to its name
+                const firstGenreId = genre_ids[0]; // Get the first genre ID
+                const genre = genreMap[firstGenreId] || 'Unknown'; // Map to the genre name or default to 'Unknown'
+
+                const existingShow = await pool.request()
+                    .input('name', sql.VarChar, name)
+                    .query(`SELECT COUNT(*) AS count FROM TVSHOWS WHERE name = @name`);
+
+                if (existingShow.recordset[0].count === 0) {
+                    await pool.request()
+                        .input('name', sql.VarChar, name)
+                        .input('genre', sql.VarChar, genre) // Insert only the first genre
+                        .input('posters', sql.VarChar, posterUrl)
+                        .input('popularity', sql.Float, popularity)
+                        .input('rating', sql.Float, vote_average)
+                        .input('seasons', sql.Int, number_of_seasons)
+                        .input('episodes', sql.Int, number_of_episodes)
+                        .input('description', sql.VarChar, detailedShow.overview || '') // Use overview if available
+                        .query(`INSERT INTO TVSHOWS (name, genre, posters, popularity, rating, seasons, episodes, description) VALUES (@name, @genre, @posters, @popularity, @rating, @seasons, @episodes, @description)`);
+                    console.log(`Inserted TV show: ${name}`);
+                } else {
+                    console.log(`TV show already exists: ${name}`);
+                }
+            }
+
+            console.log(`Processed TV shows from page ${currentPage}`);
+            currentPage++;
+        }
+
+        console.log('All TV shows processed successfully!');
+    } catch (error) {
+        console.error('Error fetching TV shows:', error);
     }
 };
 
@@ -192,20 +273,31 @@ const fetchMovies = async () => {
 //updateMovieGenres();
 // Call the updateMovieDetails function
 // updateMovieDetails(); // Uncomment this line to run the function
-// Add this code to your filldb.js file
+// Call the fetchTVShows function
+//fetchTVShows(); // Uncomment this line to run the function
 
 app.get('/', (req, res) => {
     res.send('API is working!');
-  });
-
+});
 
 app.get('/api/movies', async (req, res) => {
     try {
         const pool = await sql.connect(dbConfig);
         const result = await pool.request().query('SELECT * FROM movies');
-        res.send(result.recordset); // Send the movies as a JSON response
+        res.send(result.recordset);
     } catch (error) {
         console.error('Error fetching movies:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+app.get('/api/tvshows', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request().query('SELECT * FROM TVSHOWS');
+        res.send(result.recordset); // Send the TV shows as a JSON response
+    } catch (error) {
+        console.error('Error fetching TV shows:', error);
         res.status(500).send('Internal Server Error');
     }
 });
