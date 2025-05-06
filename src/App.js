@@ -7,8 +7,15 @@ import TvShowBrowser from './TvShowBrowser';
 import ViewProfile from './ViewProfile';
 import Settings from './Settings';
 import Recommendations from './Recommendations';
+import LoginSignup from './LoginSignup';
 
 function App() {
+  const [isPopupOpen, setPopupOpen] = useState(false);
+
+  const handleInteraction = () => {
+    setPopupOpen(true);
+  };
+
   useEffect(() => {
     
   }, []);
@@ -16,13 +23,14 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<Home />} />
-        <Route path="/explore/movies" element={<MovieBrowser />} />
-        <Route path="/explore/tvshows" element={<TvShowBrowser />} />
+        <Route path="/" element={<Home onInteract={handleInteraction} />} />
+        <Route path="/explore/movies" element={<MovieBrowser onInteract={handleInteraction} />} />
+        <Route path="/explore/tvshows" element={<TvShowBrowser onInteract={handleInteraction} />} />
         <Route path="/profile" element={<ViewProfile />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/recommendations" element={<Recommendations />} />
       </Routes>
+      {isPopupOpen && <LoginSignup onClose={() => setPopupOpen(false)} />}
     </Router>
   );
 }

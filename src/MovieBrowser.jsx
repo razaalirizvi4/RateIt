@@ -3,6 +3,11 @@ import { useNavigate } from 'react-router-dom';
 import { X, Search, Home, Compass, Film, Tv, ChevronDown, ChevronRight, Heart, Settings as SettingsIcon, BookmarkPlus, User, LogOut } from 'lucide-react';
 import { CreatePostButton } from './CreatePostButton.jsx';
 import axios from 'axios'; // Import axios for making API calls
+import ViewProfile from './ViewProfile';
+import Settings from './Settings';
+import Recommendations from './Recommendations';
+import Sidebar from './Sidebar'; // Import the Sidebar component
+import Navbar from './Navbar'; // Import the Navbar component
 
 export default function MovieBrowser() {
   const navigate = useNavigate();
@@ -73,137 +78,25 @@ export default function MovieBrowser() {
     (movie.genre && movie.genre.toLowerCase().includes(searchQuery.toLowerCase()))
   );
 
-
   return (
     <div className="min-h-screen bg-white">
-      {/* Header */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-50">
-        <div className="max-w-5xl mx-auto px-4">
-          <div className="flex items-center justify-between h-12">
-            <div className="flex items-center space-x-4">
-              <div className="flex items-center">
-                <img src="./images/logo.png" alt="RateIt Logo" className="h-8 w-8 mr-2"/>
-                <span className="text-xl font-bold text-gray-900">RateIt</span>
-              </div>
-            </div>
-            
-            {/* Search bar */}
-            <div className="flex-1 max-w-xl mx-4">
-              <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
-                <input
-                  type="text"
-                  placeholder="Search movies"
-                  value={searchQuery}
-                  onChange={handleSearchChange}
-                  className="w-full py-1.5 pl-10 pr-4 rounded-full bg-gray-100 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
-                />
-              </div>
-            </div>
-            
-            <div className="flex items-center space-x-2">
-              <CreatePostButton />
-              <div className="relative profile-dropdown-container">
-                <button 
-                  onClick={toggleProfileDropdown}
-                  className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
-                >
-                  <img 
-                    src="./images/pfp2.jpg" 
-                    alt="Profile" 
-                    className="w-full h-full object-cover rounded-full"
-                  />
-                </button>
-                
-                {profileDropdownOpen && (
-                  <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg border border-gray-200">
-                    <div className="p-2">
-                      <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md flex items-center">
-                        <User size={16} className="mr-2" />
-                        View Profile
-                      </button>
-                      <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md flex items-center">
-                        <LogOut size={16} className="mr-2" />
-                        Log Out
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-        </div>
-      </header>
+      <Navbar 
+        searchQuery={searchQuery} 
+        setSearchQuery={setSearchQuery} 
+        profileDropdownOpen={profileDropdownOpen} 
+        setProfileDropdownOpen={setProfileDropdownOpen} 
+      />
 
       {/* Main content */}
       <div className="max-w-5xl mx-auto px-4 py-4">
         <div className="flex gap-6">
-          {/* Sidebar */}
-          <div className="w-64 flex-shrink-0">
-            <nav className="space-y-1">
-              <button 
-                onClick={() => {
-                  setActiveSidebarItem('home');
-                  navigate('/');
-                }}
-                className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
-                  activeSidebarItem === 'home' 
-                    ? 'bg-gray-100 text-gray-900' 
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <Home size={18} className="mr-3" />
-                Home
-              </button>
-              <button 
-                onClick={toggleExplore}
-                className={`w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md ${
-                  activeSidebarItem === 'explore' 
-                    ? 'bg-gray-100 text-gray-900' 
-                    : 'text-gray-600 hover:bg-gray-50'
-                }`}
-              >
-                <div className="flex items-center">
-                  <Compass size={18} className="mr-3" />
-                  Explore
-                </div>
-                {exploreExpanded ? <ChevronDown size={16} /> : <ChevronRight size={16} />}
-              </button>
-              
-              {exploreExpanded && (
-                <div className="ml-6 space-y-1">
-                  <button 
-                    onClick={() => {
-                      setActiveSection('movies');
-                      navigate('/explore/movies');
-                    }}
-                    className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
-                      activeSection === 'movies' 
-                        ? 'bg-gray-100 text-gray-900' 
-                        : 'text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    <Film size={16} className="mr-3" />
-                    Movies
-                  </button>
-                  <button 
-                    onClick={() => {
-                      setActiveSection('tvshows');
-                      navigate('/explore/tvshows');
-                    }}
-                    className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
-                      activeSection === 'tvshows' 
-                        ? 'bg-gray-100 text-gray-900' 
-                        : 'text-gray-600 hover:bg-gray-50'
-                    }`}
-                  >
-                    <Tv size={16} className="mr-3" />
-                    TV Shows
-                  </button>
-                </div>
-              )}
-            </nav>
-          </div>
+          <Sidebar 
+            activeSidebarItem={activeSidebarItem} 
+            setActiveSidebarItem={setActiveSidebarItem} 
+            toggleExplore={toggleExplore} 
+            exploreExpanded={exploreExpanded} 
+            className="my-2"
+          />
 
           {/* Movies Grid */}
           <div className="flex-1">
@@ -259,7 +152,9 @@ export default function MovieBrowser() {
                     </div>
                     <div className="flex items-center space-x-2">
                       <span className="text-gray-500">Available on:</span>
-                      
+                      {//selectedMovie.platforms.map((platform, index) => (
+                        //<span key={index} className="text-blue-500">{platform}</span>))
+                      }
                     </div>
                   </div>
                   <button

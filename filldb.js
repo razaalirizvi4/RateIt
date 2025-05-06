@@ -1,5 +1,8 @@
 const express = require('express');
 require('dotenv').config();
+const multer = require('multer');
+const path = require('path');
+const fs = require('fs'); // Import fs module
 
 const cors = require('cors');
 const sql = require('mssql');
@@ -8,10 +11,16 @@ const axios = require('axios');
 const app = express();
 const port = 3001;
 
+// Ensure the uploads directory exists
+const uploadsDir = path.join(__dirname, 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 // Middleware
 app.use(cors());
 app.use(express.json());
+app.use('/uploads', express.static('uploads')); // Serve static files from the uploads directory
 
 const dbConfig = {
     user: process.env.SERVER_USER,
@@ -298,6 +307,71 @@ app.get('/api/tvshows', async (req, res) => {
         res.send(result.recordset); // Send the TV shows as a JSON response
     } catch (error) {
         console.error('Error fetching TV shows:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+    destination: (req, file, cb) => {
+        cb(null, uploadsDir); // Use the uploads directory
+    },
+    filename: (req, file, cb) => {
+        cb(null, `${Date.now()}-${file.originalname}`); // Unique filename
+    }
+});
+
+const upload = multer({ storage });
+
+// Register endpoint
+app.post('/api/register', upload.single('profilePicture'), async (req, res) => {
+    const { username, email, password, bio, accountType } = req.body;
+    const profilePicturePath = req.file ? req.file.path.replace(/\\/g, '/').slice(9) : null; // Normalize path for URL
+
+    try {
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar(50), username)
+            .input('email', sql.VarChar(100), email)
+            .input('password', sql.VarChar(100), password)
+            .input('bio', sql.VarChar(sql.MAX), bio)
+            .input('accountType', sql.VarChar(sql.MAX), accountType)
+            .input('pfp', sql.VarChar(sql.MAX), profilePicturePath) // Save the normalized path
+            .execute('sp_RegisterUser'); // Call your stored procedure
+
+        res.status(201).send('User registered successfully');
+    } catch (error) {
+        console.error('Error registering user:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Login endpoint
+app.post('/api/login', async (req, res) => {
+    const { username, password } = req.body;
+
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('username', sql.VarChar(50), username)
+            .input('password', sql.VarChar(100), password)
+            .query('SELECT * FROM USERS WHERE username = @username AND password = @password');
+
+        if (result.recordset.length > 0) {
+            // User found, return user data (excluding password)
+            const user = result.recordset[0];
+            const profilePicturePath = user.pfp ? `http://localhost:3001${user.pfp}` : null; // Use the relative path
+            res.status(200).json({
+                username: user.username,
+                email: user.email,
+                bio: user.bio,
+                pfp: profilePicturePath // Return the profile picture path as a URL
+            });
+        } else {
+            res.status(401).send('Invalid username or password');
+        }
+    } catch (error) {
+        console.error('Error logging in:', error);
         res.status(500).send('Internal Server Error');
     }
 });

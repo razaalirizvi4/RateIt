@@ -1,0 +1,80 @@
+import { Link } from 'react-router-dom';
+import { Search, User, LogOut } from 'lucide-react';
+import { useState, useEffect } from 'react';
+
+const Navbar = ({ searchQuery, setSearchQuery, profileDropdownOpen, setProfileDropdownOpen }) => {
+  const [user, setUser] = useState(null);
+
+  useEffect(() => {
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      setUser(JSON.parse(storedUser));
+    }
+  }, []);
+
+  return (
+    <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
+      <div className="max-w-5xl mx-auto px-4 flex items-center justify-between h-12">
+        <div className="flex items-center space-x-4">
+          <div className="flex items-center">
+            <img src="./images/logo.png" alt="RateIt Logo" className="h-8 w-8 mr-2" />
+            <span className="text-xl font-bold text-gray-900">RateIt</span>
+          </div>
+        </div>
+
+        {/* Search bar */}
+        <div className="flex-1 max-w-xl mx-4">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" size={18} />
+            <input
+              type="text"
+              placeholder="Search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="w-full py-1.5 pl-10 pr-4 rounded-full bg-gray-100 text-gray-900 placeholder-gray-500 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:bg-white"
+            />
+          </div>
+        </div>
+
+        {/* Profile Dropdown */}
+        <div className="relative profile-dropdown-container">
+          <button 
+            onClick={() => setProfileDropdownOpen(!profileDropdownOpen)}
+            className="flex items-center justify-center w-8 h-8 rounded-full bg-gray-100 hover:bg-gray-200 transition-colors"
+          >
+            {user ? (
+              <img 
+                src={user.pfp} 
+                alt="Profile" 
+                className="w-full h-full object-cover rounded-full"
+              />
+            ) : (
+              <User size={20} />
+            )}
+          </button>
+          
+          {profileDropdownOpen && (
+            <div className="absolute right-0 mt-2 w-56 bg-white rounded-md shadow-lg border border-gray-200">
+              <div className="p-2">
+                <Link 
+                  to="/profile" 
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md flex items-center"
+                  onClick={() => setProfileDropdownOpen(false)}
+                >
+                  <User size={16} className="mr-2" />
+                  View Profile
+                </Link>
+                <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md flex items-center">
+                  <LogOut size={16} className="mr-2" />
+                  Log Out
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+};
+
+export default Navbar;
