@@ -4,6 +4,7 @@ import { X, Search, Plus, Home, Compass, Film, Tv, ChevronDown, ChevronRight, He
 import { CreatePostButton } from './CreatePostButton.jsx';
 import Sidebar from './Sidebar'; // Import the Sidebar component
 import Navbar from './Navbar'; // Adjust the path if necessary
+import axios from 'axios';
 
 export default function SocialFeed({ onInteract }) {
   const navigate = useNavigate();
@@ -14,76 +15,64 @@ export default function SocialFeed({ onInteract }) {
   const [newComment, setNewComment] = useState('');
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [activeSidebarItem, setActiveSidebarItem] = useState('home');
-  
-  // Sample posts data 
-  const [posts, setPosts] = useState([
-    {
-      id: 1,
-      author: "MovieBuff42",
-      authorAvatar: "./images/pfp.jpg",
-      title: "Just watched Inception for the 5th time",
-      content: "I keep noticing new details every time I watch it. The way Nolan crafts the dream layers is just brilliant. What's your favorite scene?",
-      image: "/api/placeholder/500/300",
-      timestamp: "2 hours ago",
-      upvotes: 245,
-      downvotes: 12,
-      userVote: null,
-      comments: [
-        { id: 1, author: "DreamExplorer", authorAvatar: "/api/placeholder/80/80", content: "The hallway fight scene is a masterpiece of practical effects!", timestamp: "1 hour ago", upvotes: 38 },
-        { id: 2, author: "CinematicVisions", authorAvatar: "/api/placeholder/80/80", content: "I'm still not sure if the top stopped spinning or not at the end...", timestamp: "45 minutes ago", upvotes: 27 }
-      ]
-    },
-    {
-      id: 2,
-      author: "FilmCritic101",
-      authorAvatar: "./images/pfp.jpg",
-      title: "Underrated gems from the 90s",
-      content: "Everyone knows Pulp Fiction and Shawshank, but let's talk about these lesser-known masterpieces from the 90s that deserve more recognition: Miller's Crossing, Leaving Las Vegas, and Before Sunrise.",
-      timestamp: "5 hours ago",
-      upvotes: 189,
-      downvotes: 7,
-      userVote: null,
-      comments: [
-        { id: 1, author: "RetroCinephile", authorAvatar: "/api/placeholder/80/80", content: "Before Sunrise is one of the most beautiful love stories ever told. The whole trilogy is amazing.", timestamp: "4 hours ago", upvotes: 42 },
-        { id: 2, author: "ClassicMovieFan", authorAvatar: "/api/placeholder/80/80", content: "Don't forget 'The Usual Suspects'! That ending still blows my mind.", timestamp: "3 hours ago", upvotes: 31 }
-      ]
-    },
-    {
-      id: 3,
-      author: "SciFiNerd",
-      authorAvatar: "./images/pfp.jpg",
-      title: "The Expanse is the best sci-fi show nobody's watching",
-      content: "If you love hard sci-fi with realistic physics, complex politics, and incredible world-building, you need to check out The Expanse. It's criminally underrated and has some of the best character development I've seen.",
-      image: "/api/placeholder/500/300",
-      timestamp: "8 hours ago",
-      upvotes: 372,
-      downvotes: 18,
-      userVote: null,
-      comments: [
-        { id: 1, author: "SpaceExplorer", authorAvatar: "/api/placeholder/80/80", content: "Completely agree! The attention to scientific detail is unmatched.", timestamp: "7 hours ago", upvotes: 65 },
-        { id: 2, author: "SeriesAddict", authorAvatar: "/api/placeholder/80/80", content: "Amos is such a fantastic character. His development over the seasons is incredible.", timestamp: "5 hours ago", upvotes: 44 }
-      ]
-    },
-    {
-      id: 4,
-      author: "HorrorFanatic",
-      authorAvatar: "./images/pfp.jpg",
-      title: "Modern horror recommendations thread",
-      content: "Looking for modern horror films that are actually scary and not just jump scares? I've been impressed with Hereditary, The Witch, and It Follows. What would you add to this list?",
-      timestamp: "12 hours ago",
-      upvotes: 293,
-      downvotes: 15,
-      userVote: null,
-      comments: [
-        { id: 1, author: "MidnightWatcher", authorAvatar: "/api/placeholder/80/80", content: "Midsommar is a must-watch if you liked Hereditary. Same director, totally different vibe but equally disturbing.", timestamp: "10 hours ago", upvotes: 58 },
-        { id: 2, author: "ScarySights", authorAvatar: "/api/placeholder/80/80", content: "The Babadook is phenomenal - psychological horror at its finest.", timestamp: "8 hours ago", upvotes: 47 }
-      ]
-    }
-  ]);
+  const [posts, setPosts] = useState([]);
+
+  // Fetch posts from database
+  useEffect(() => {
+    const fetchPosts = async () => {
+      try {
+        const response = await axios.get('http://localhost:3001/api/posts');
+        console.log('Raw post data:', response.data); // Add this line
+        setPosts(response.data);
+      } catch (error) {
+        console.error('Error fetching posts:', error);
+      }
+    };
+
+    fetchPosts();
+  }, []);
 
   // CreatePostButton
-  const handlePostCreated = (newPost) => {
-    setPosts(prevPosts => [newPost, ...prevPosts]);
+  const handlePostCreated = async (newPost) => {
+    try {
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) {
+        onInteract(); // Trigger login popup
+        return;
+      }
+
+      const user = JSON.parse(storedUser);
+      
+      // Structure the post data according to the table schema
+      const postData = {
+        username: user.username,
+        contentText: newPost.content,
+        media: null,
+        pollID: null,
+        movieID: null,
+        tvShowID: null,
+        tags: newPost.tags || null,
+        title: newPost.content.title // Changed from newPost.title to newPost.content.title
+      };
+
+      const response = await axios.post('http://localhost:3001/api/posts', postData);
+      
+      // Construct the new post object for UI
+      const newPostForUI = {
+        ...postData,
+        postID: response.data.postId, // or response.data.postID depending on backend
+        upvoteCount: 0,
+        commentCount: 0,
+        dateOfPost: new Date().toISOString(),
+        pfp: user.pfp || null,
+        userVote: null,
+        comments: []
+      };
+
+      setPosts(prevPosts => [newPostForUI, ...prevPosts]);
+    } catch (error) {
+      console.error('Error creating post:', error);
+    }
   };
 
   const toggleExplore = () => {
@@ -101,9 +90,34 @@ export default function SocialFeed({ onInteract }) {
   };
 
   const handlePostClick = (post) => {
+    // Check if user is logged in by checking localStorage
+    const storedUser = localStorage.getItem('user');
+    console.log('Stored user:', storedUser);
+    
     onInteract();
-    //const currentPost = posts.find(p => p.id === post.id);
-    //setSelectedPost(currentPost);
+    const currentPost = posts.find(p => p.postID === post.postID);
+    
+    // Fetch comments using the stored procedure
+    const fetchComments = async () => {
+      try {
+        const response = await axios.get(`http://localhost:3001/api/posts/${post.postID}/comments`, {
+          params: {
+            sortBy: 'recent' // You can make this configurable later
+          }
+        });
+        
+        const postWithComments = {
+          ...currentPost,
+          comments: response.data
+        };
+        setSelectedPost(postWithComments);
+      } catch (error) {
+        console.error('Error fetching comments:', error);
+        setSelectedPost(currentPost);
+      }
+    };
+    
+    fetchComments();
   };
 
   const closeModal = () => {
@@ -133,88 +147,169 @@ export default function SocialFeed({ onInteract }) {
     };
   }, [profileDropdownOpen]);
 
-  const handleVote = (postId, vote) => {
-    setPosts(prevPosts => {
-      const updatedPosts = prevPosts.map(post => {
-        if (post.id === postId) {
-          if (post.userVote === vote) {
-            return {
-              ...post,
-              upvotes: vote === 'up' ? post.upvotes - 1 : post.upvotes,
-              downvotes: vote === 'down' ? post.downvotes - 1 : post.downvotes,
-              userVote: null
-            };
-          }
-          
-          if (post.userVote !== null && post.userVote !== vote) {
-            return {
-              ...post,
-              upvotes: vote === 'up' ? post.upvotes + 1 : post.upvotes - 1,
-              downvotes: vote === 'down' ? post.downvotes + 1 : post.downvotes - 1,
-              userVote: vote
-            };
-          }
-
-          return {
-            ...post,
-            upvotes: vote === 'up' ? post.upvotes + 1 : post.upvotes,
-            downvotes: vote === 'down' ? post.downvotes + 1 : post.downvotes,
-            userVote: vote
-          };
-        }
-        return post;
-      });
-      
-      // If the modal is open with the current post, update it too
-      if (selectedPost && selectedPost.id === postId) {
-        const updatedPost = updatedPosts.find(p => p.id === postId);
-        setSelectedPost(updatedPost);
+  const handleVote = async (postId, vote) => {
+    try {
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) {
+        onInteract(); // Trigger login popup
+        return;
       }
+
+      const user = JSON.parse(storedUser);
       
-      return updatedPosts;
-    });
+      // Determine the endpoint based on current vote status
+      const post = posts.find(p => p.postID === postId);
+      const endpoint = post.userVote === 'up' ? 
+        `http://localhost:3001/api/posts/${postId}/removeupvote` : 
+        `http://localhost:3001/api/posts/${postId}/upvote`;
+      
+      const response = await axios.post(endpoint, {
+        userId: user.id
+      });
+
+      setPosts(prevPosts => {
+        const updatedPosts = prevPosts.map(post => {
+          if (post.postID === postId) {
+            return {
+              ...post,
+              upvoteCount: response.data.upvoteCount,
+              userVote: post.userVote === 'up' ? null : 'up', // Toggle between up and null
+              comments: post.comments // Preserve the existing comments
+            };
+          }
+          return post;
+        });
+        
+        if (selectedPost && selectedPost.postID === postId) {
+          const updatedPost = updatedPosts.find(p => p.postID === postId);
+          setSelectedPost({
+            ...updatedPost,
+            comments: selectedPost.comments // Preserve the modal's comments
+          });
+        }
+        
+        return updatedPosts;
+      });
+    } catch (error) {
+      console.error('Error voting on post:', error);
+    }
   };
 
-  const handleCommentSubmit = (e) => {
+  const handleCommentSubmit = async (e) => {
     e.preventDefault();
     if (!newComment.trim()) return;
     
-    // Create the new comment
-    const newCommentObj = {
-      id: Date.now(),
-      author: "You",
-      authorAvatar: "./images/pfp2.jpg",
-      content: newComment,
-      timestamp: "Just now",
-      upvotes: 0
-    };
+    const storedUser = localStorage.getItem('user');
+    if (!storedUser) {
+        onInteract(); // Trigger login popup
+        return;
+    }
+
+    const user = JSON.parse(storedUser);
     
-    // Update both posts state and selected post
+    try {
+        const response = await axios.post(`http://localhost:3001/api/posts/${selectedPost.postID}/comments`, {
+            username: user.username,
+            commentText: newComment
+        });
+
+        const newCommentObj = response.data;
+        
+        setPosts(prevPosts => {
+            return prevPosts.map(post => {
+                if (post.postID === selectedPost.postID) {
+                    return {
+                        ...post,
+                        comments: [...(post.comments || []), newCommentObj]
+                    };
+                }
+                return post;
+            });
+        });
+        
+        setSelectedPost(prev => ({
+            ...prev,
+            comments: [...(prev.comments || []), newCommentObj]
+        }));
+        
+        setNewComment('');
+    } catch (error) {
+        console.error('Error adding comment:', error);
+    }
+};
+
+const handleCommentVote = async (commentId, vote) => {
+  try {
+    const storedUser = localStorage.getItem('user');
+    if (!storedUser) {
+      onInteract(); // Trigger login popup
+      return;
+    }
+
+    const user = JSON.parse(storedUser);
+    
+    // Determine the endpoint based on current vote status
+    const comment = selectedPost.comments.find(c => c.commentID === commentId);
+    const endpoint = comment.userVote === 'up' ? 
+      `http://localhost:3001/api/comments/${commentId}/removeupvote` : 
+      `http://localhost:3001/api/comments/${commentId}/upvote`;
+    
+    console.log('Making request to:', endpoint); // Debug log
+    console.log('With user:', user.id); // Debug log
+    
+    const response = await axios.post(endpoint, {
+      userId: user.id
+    });
+
+    console.log('Response:', response.data); // Debug log
+
+    // Update the posts and comments state
     setPosts(prevPosts => {
       return prevPosts.map(post => {
-        if (post.id === selectedPost.id) {
+        if (post.postID === selectedPost.postID) {
           return {
             ...post,
-            comments: [...post.comments, newCommentObj]
+            comments: post.comments.map(comment => {
+              if (comment.commentID === commentId) {
+                return {
+                  ...comment,
+                  upvoteCount: response.data.upvoteCount,
+                  userVote: comment.userVote === 'up' ? null : 'up'
+                };
+              }
+              return comment;
+            })
           };
         }
         return post;
       });
     });
-    
-    setSelectedPost(prev => ({
-      ...prev,
-      comments: [...prev.comments, newCommentObj]
-    }));
-    
-    setNewComment('');
-  };
 
-  const filteredPosts = posts.filter(post => 
-    post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    post.content.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    post.author.toLowerCase().includes(searchQuery.toLowerCase())
-  );
+    // Update the selected post if it's open in the modal
+    if (selectedPost) {
+      setSelectedPost(prev => ({
+        ...prev,
+        comments: prev.comments.map(comment => {
+          if (comment.commentID === commentId) {
+            return {
+              ...comment,
+              upvoteCount: response.data.upvoteCount,
+              userVote: comment.userVote === 'up' ? null : 'up'
+            };
+          }
+          return comment;
+        })
+      }));
+    }
+  } catch (error) {
+    console.error('Error voting on comment:', error);
+  }
+};
+
+  const filteredPosts = posts?.filter(post => 
+    (post?.contentText && post.contentText.toLowerCase().includes(searchQuery.toLowerCase())) ||
+    (post?.username && post.username.toLowerCase().includes(searchQuery.toLowerCase()))
+  ) || [];
 
   return (
     <div className="min-h-screen bg-white">
@@ -237,23 +332,28 @@ export default function SocialFeed({ onInteract }) {
           
           {/* Posts feed */}
           <div className="flex-1">
-            {filteredPosts.map((post) => (
+            {/* Add CreatePostButton here */}
+            <div className="mb-4">
+              <CreatePostButton onPostCreated={handlePostCreated} />
+            </div>
+            
+            {Array.isArray(filteredPosts) && filteredPosts.map((post) => (
               <div 
-                key={post.id}
+                key={post.postID} // Changed from post.id to post.postID
                 className="bg-white border border-gray-200 rounded-md mb-3 hover:border-gray-300 transition-colors"
               >
                 <div className="flex">
                   {/* Vote buttons */}
                   <div className="flex flex-col items-center px-2 py-2 bg-gray-50 rounded-l-md">
                     <button 
-                      onClick={() => handleVote(post.id, 'up')}
+                      onClick={() => handleVote(post.postID, 'up')}
                       className={`p-1 rounded hover:bg-gray-200 transition ${post.userVote === 'up' ? 'text-orange-500' : 'text-gray-400'}`}
                     >
                       <ArrowUp size={20} />
                     </button>
-                    <span className="text-xs font-medium text-gray-900">{post.upvotes - post.downvotes}</span>
+                    <span className="text-xs font-medium text-gray-900">{post.upvoteCount || 0}</span>
                     <button 
-                      onClick={() => handleVote(post.id, 'down')}
+                      onClick={() => handleVote(post.postID, 'down')}
                       className={`p-1 rounded hover:bg-gray-200 transition ${post.userVote === 'down' ? 'text-blue-500' : 'text-gray-400'}`}
                     >
                       <ArrowDown size={20} />
@@ -263,18 +363,18 @@ export default function SocialFeed({ onInteract }) {
                   {/* Post content */}
                   <div className="flex-1 p-3">
                     <div className="flex items-center text-xs text-gray-500 mb-1">
-                      <img src={post.authorAvatar} alt={post.author} className="w-5 h-5 rounded-full mr-1" />
-                      <span className="font-medium text-gray-900">r/{post.author}</span>
+                      <img src={post.pfp || './images/pfp.jpg'} alt={post.username} className="w-5 h-5 rounded-full mr-1" />
+                      <span className="font-medium text-gray-900">r/{post.username}</span>
                       <span className="mx-1">•</span>
-                      <span>{post.timestamp}</span>
+                      <span>{new Date(post.dateOfPost).toLocaleString()}</span>
                     </div>
                     
-                    <h3 className="text-lg font-medium text-gray-900 mb-1">{post.title}</h3>
-                    <p className="text-gray-800 text-sm mb-2">{post.content}</p>
+                    <h3 className="text-lg font-medium text-gray-900 mb-1">{post.title || 'Untitled'}</h3>
+                    <p className="text-gray-800 text-sm mb-2">{post.contentText}</p>
                     
-                    {post.image && (
+                    {post.media && (
                       <div className="mb-2 rounded-md overflow-hidden">
-                        <img src={post.image} alt="Post image" className="w-full" />
+                        <img src={post.media} alt="Post image" className="w-full" />
                       </div>
                     )}
                     
@@ -284,7 +384,7 @@ export default function SocialFeed({ onInteract }) {
                         className="flex items-center hover:bg-gray-100 rounded-full px-2 py-1"
                       >
                         <MessageSquare size={16} className="mr-1" />
-                        {post.comments.length} Comments
+                        {post.commentCount || 0} Comments
                       </button>
                       <button className="flex items-center hover:bg-gray-100 rounded-full px-2 py-1 ml-2">
                         <Share size={16} className="mr-1" />
@@ -304,7 +404,7 @@ export default function SocialFeed({ onInteract }) {
       </div>
 
       {/* Post Modal */}
-      {selectedPost && (
+      {selectedPost && localStorage.getItem('user') && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
           <div className="bg-white rounded-lg w-full max-w-3xl max-h-[90vh] flex flex-col">
             <div className="flex justify-between items-center p-4 border-b border-gray-200">
@@ -318,32 +418,32 @@ export default function SocialFeed({ onInteract }) {
               {/* Original post */}
               <div className="bg-gray-50 rounded-md p-4 mb-4">
                 <div className="flex items-center text-xs text-gray-500 mb-2">
-                  <img src={selectedPost.authorAvatar} alt={selectedPost.author} className="w-5 h-5 rounded-full mr-1" />
-                  <span className="font-medium text-gray-900">r/{selectedPost.author}</span>
+                  <img src={selectedPost.pfp || './images/pfp.jpg'} alt={selectedPost.username} className="w-5 h-5 rounded-full mr-1" />
+                  <span className="font-medium text-gray-900">r/{selectedPost.username}</span>
                   <span className="mx-1">•</span>
-                  <span>{selectedPost.timestamp}</span>
+                  <span>{new Date(selectedPost.dateOfPost).toLocaleString()}</span>
                 </div>
                 
-                <h3 className="text-lg font-medium text-gray-900 mb-2">{selectedPost.title}</h3>
-                <p className="text-gray-800 text-sm mb-3">{selectedPost.content}</p>
+                <h3 className="text-lg font-medium text-gray-900 mb-2">{selectedPost.title || 'Untitled'}</h3>
+                <p className="text-gray-800 text-sm mb-3">{selectedPost.contentText}</p>
                 
-                {selectedPost.image && (
+                {selectedPost.media && (
                   <div className="mb-3 rounded-md overflow-hidden">
-                    <img src={selectedPost.image} alt="Post image" className="w-full" />
+                    <img src={selectedPost.media} alt="Post image" className="w-full" />
                   </div>
                 )}
                 
                 <div className="flex items-center text-gray-500 text-xs">
                   <div className="flex items-center">
                     <button 
-                      onClick={() => handleVote(selectedPost.id, 'up')}
+                      onClick={() => handleVote(selectedPost.postID, 'up')}
                       className={`p-1 rounded hover:bg-gray-200 transition ${selectedPost.userVote === 'up' ? 'text-orange-500' : 'text-gray-400'}`}
                     >
                       <ArrowUp size={16} />
                     </button>
-                    <span className="mx-1 font-medium text-gray-900">{selectedPost.upvotes - selectedPost.downvotes}</span>
+                    <span className="mx-1 font-medium text-gray-900">{selectedPost.upvoteCount || 0}</span>
                     <button 
-                      onClick={() => handleVote(selectedPost.id, 'down')}
+                      onClick={() => handleVote(selectedPost.postID, 'down')}
                       className={`p-1 rounded hover:bg-gray-200 transition ${selectedPost.userVote === 'down' ? 'text-blue-500' : 'text-gray-400'}`}
                     >
                       <ArrowDown size={16} />
@@ -354,19 +454,19 @@ export default function SocialFeed({ onInteract }) {
               
               {/* Comments */}
               <div className="space-y-4">
-                {selectedPost.comments.map(comment => (
-                  <div key={comment.id} className="bg-white border border-gray-200 rounded-md p-3">
+                {selectedPost?.comments?.map(comment => (
+                  <div key={comment.commentID} className="bg-white border border-gray-200 rounded-md p-3">
                     <div className="flex items-center text-xs text-gray-500 mb-2">
-                      <img src={comment.authorAvatar} alt={comment.author} className="w-5 h-5 rounded-full mr-1" />
-                      <span className="font-medium text-gray-900">r/{comment.author}</span>
+                      <img src={comment.pfp || './images/pfp.jpg'} alt={comment.username} className="w-5 h-5 rounded-full mr-1" />
+                      <span className="font-medium text-gray-900">r/{comment.username}</span>
                       <span className="mx-1">•</span>
-                      <span>{comment.timestamp}</span>
+                      <span>{new Date(comment.dateOfComment).toLocaleString()}</span>
                     </div>
-                    <p className="text-gray-800 text-sm">{comment.content}</p>
+                    <p className="text-gray-800 text-sm">{comment.commentText}</p>
                     <div className="flex items-center mt-2 text-xs text-gray-500">
                       <button className="flex items-center hover:bg-gray-100 rounded-full px-2 py-1">
                         <ArrowUp size={14} className="mr-1" />
-                        {comment.upvotes}
+                        {comment.upvoteCount || 0}
                       </button>
                       <button className="flex items-center hover:bg-gray-100 rounded-full px-2 py-1 ml-2">
                         <MessageSquare size={14} className="mr-1" />
