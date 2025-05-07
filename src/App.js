@@ -13,7 +13,10 @@ function App() {
   const [isPopupOpen, setPopupOpen] = useState(false);
 
   const handleInteraction = () => {
-    setPopupOpen(true);
+    const storedUser = localStorage.getItem('user');
+    if (!storedUser) {
+      setPopupOpen(true);
+    }
   };
 
   useEffect(() => {

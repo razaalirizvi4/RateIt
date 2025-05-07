@@ -1,8 +1,9 @@
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { Search, User, LogOut } from 'lucide-react';
 import { useState, useEffect } from 'react';
 
 const Navbar = ({ searchQuery, setSearchQuery, profileDropdownOpen, setProfileDropdownOpen }) => {
+  const navigate = useNavigate();
   const [user, setUser] = useState(null);
 
   useEffect(() => {
@@ -11,6 +12,13 @@ const Navbar = ({ searchQuery, setSearchQuery, profileDropdownOpen, setProfileDr
       setUser(JSON.parse(storedUser));
     }
   }, []);
+
+  const handleLogout = () => {
+    localStorage.removeItem('user');
+    setUser(null);
+    setProfileDropdownOpen(false);
+    navigate('/');
+  };
 
   return (
     <div className="bg-white border-b border-gray-200 sticky top-0 z-50">
@@ -64,7 +72,10 @@ const Navbar = ({ searchQuery, setSearchQuery, profileDropdownOpen, setProfileDr
                   <User size={16} className="mr-2" />
                   View Profile
                 </Link>
-                <button className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md flex items-center">
+                <button 
+                  onClick={handleLogout}
+                  className="w-full text-left px-4 py-2 text-sm text-gray-700 hover:bg-gray-100 rounded-md flex items-center"
+                >
                   <LogOut size={16} className="mr-2" />
                   Log Out
                 </button>

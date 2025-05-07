@@ -1,75 +1,112 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { X, Search, Home, Compass, Film, Tv, ChevronDown, ChevronRight, Heart, Settings, User, LogOut, Edit2, Mail, Calendar, MapPin, Star, BookmarkPlus, MessageSquare, ArrowUp } from 'lucide-react';
+import { X, Search, Home, Compass, Film, Tv, ChevronDown, ChevronRight, Heart, Settings, User, LogOut, Edit2, Mail, Calendar, MapPin, Star, BookmarkPlus, MessageSquare, ArrowUp, ArrowDown } from 'lucide-react';
 
 export default function ViewProfile() {
   const navigate = useNavigate();
   const [exploreExpanded, setExploreExpanded] = useState(false);
   const [activeSidebarItem, setActiveSidebarItem] = useState('profile');
   const [activeTab, setActiveTab] = useState('activity');
+  const [userData, setUserData] = useState(null);
+  const [userPosts, setUserPosts] = useState([]);
+  const [postCount, setPostCount] = useState(0);
+  const [selectedPost, setSelectedPost] = useState(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [newComment, setNewComment] = useState('');
   
-  // Sample user data
-  const user = {
-    username: "MovieBuff42",
-    avatar: "./images/pfp2.jpg",
-    joinDate: "January 2024",
-    location: "New York, USA",
-    email: "moviebuff42@example.com",
-    bio: "Passionate about films and TV shows. Love discussing everything from classic cinema to the latest releases.",
-    stats: {
-      posts: 156,
-      followers: 1234,
-      following: 567,
-      watchlist: 89
-    },
-    recentActivity: [
-      {
-        type: "review",
-        title: "Inception",
-        rating: 5,
-        date: "2 days ago"
-      },
-      {
-        type: "watchlist",
-        title: "The Dark Knight",
-        date: "3 days ago"
-      },
-      {
-        type: "post",
-        title: "Just watched Inception for the 5th time",
-        date: "4 days ago"
+  useEffect(() => {
+    // Get user data from localStorage
+    const storedUser = localStorage.getItem('user');
+    if (storedUser) {
+      const user = JSON.parse(storedUser);
+      setUserData(user);
+      
+      // Fetch user's posts and post count
+      fetchUserPosts(user.username);
+      fetchPostCount(user.username);
+    } else {
+      // Redirect to login if no user is logged in
+      navigate('/');
+    }
+  }, [navigate]);
+
+  const fetchUserPosts = async (username) => {
+    try {
+      const response = await fetch(`http://localhost:3001/api/posts/${username}`);
+      if (response.ok) {
+        const posts = await response.json();
+        setUserPosts(posts);
+        setPostCount(posts.length); // Set the post count based on number of posts returned
       }
-    ],
-    comments: [
-      {
-        id: 1,
-        postTitle: "Just watched Inception for the 5th time",
-        content: "The hallway fight scene is a masterpiece of practical effects! The way they achieved zero gravity is mind-blowing.",
-        date: "2 days ago",
-        upvotes: 38,
-        postId: 1
-      },
-      {
-        id: 2,
-        postTitle: "Underrated gems from the 90s",
-        content: "Before Sunrise is one of the most beautiful love stories ever told. The whole trilogy is amazing.",
-        date: "4 days ago",
-        upvotes: 42,
-        postId: 2
-      },
-      {
-        id: 3,
-        postTitle: "The Expanse is the best sci-fi show nobody's watching",
-        content: "Completely agree! The attention to scientific detail is unmatched. The way they handle space physics is incredible.",
-        date: "5 days ago",
-        upvotes: 65,
-        postId: 3
+    } catch (error) {
+      console.error('Error fetching user posts:', error);
+    }
+  };
+
+  const fetchPostCount = async (username) => {
+    try {
+      const response = await fetch(`http://localhost:3001/api/posts/${username}/count`);
+      if (response.ok) {
+        const data = await response.json();
+        setPostCount(data.count);
       }
-    ]
+    } catch (error) {
+      console.error('Error fetching post count:', error);
+    }
   };
 
   const toggleExplore = () => {
     setExploreExpanded(!exploreExpanded);
+  };
+
+  if (!userData) {
+    return <div>Loading...</div>;
+  }
+
+  const openPostModal = (post) => {
+    setSelectedPost(post);
+    setIsModalOpen(true);
+  };
+
+  const closePostModal = () => {
+    setSelectedPost(null);
+    setIsModalOpen(false);
+  };
+
+  // Add handleCommentSubmit function
+  const handleCommentSubmit = (e) => {
+    e.preventDefault();
+    if (!newComment.trim()) return;
+    
+    // Create the new comment
+    const newCommentObj = {
+      id: Date.now(),
+      author: "You",
+      authorAvatar: "./images/pfp2.jpg",
+      content: newComment,
+      timestamp: "Just now",
+      upvotes: 0
+    };
+    
+    // Update both posts state and selected post
+    setUserPosts(prevPosts => {
+      return prevPosts.map(post => {
+        if (post.id === selectedPost.id) {
+          return {
+            ...post,
+            comments: [...post.comments, newCommentObj]
+          };
+        }
+        return post;
+      });
+    });
+    
+    setSelectedPost(prev => ({
+      ...prev,
+      comments: [...prev.comments, newCommentObj]
+    }));
+    
+    setNewComment('');
   };
 
   return (
@@ -100,7 +137,7 @@ export default function ViewProfile() {
             <div className="flex items-center space-x-2">
               <button 
                 onClick={() => navigate('/settings')}
-                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 rounded-full transition-colors"
+                className="p-2 text-gray-600 hover:text-gray-900 hover:bg-gray-100 transition-colors"
               >
                 <Settings size={20} />
               </button>
@@ -186,24 +223,20 @@ export default function ViewProfile() {
               <div className="flex items-start justify-between">
                 <div className="flex items-center space-x-4">
                   <img 
-                    src={user.avatar} 
-                    alt={user.username} 
+                    src={userData.pfp || './images/default-avatar.jpg'} 
+                    alt={userData.username} 
                     className="w-24 h-24 rounded-full border-4 border-white shadow-lg"
                   />
                   <div>
-                    <h1 className="text-2xl font-bold text-gray-900">{user.username}</h1>
+                    <h1 className="text-2xl font-bold text-gray-900">{userData.username}</h1>
                     <div className="flex items-center space-x-4 mt-2 text-sm text-gray-500">
                       <div className="flex items-center">
                         <Calendar size={16} className="mr-1" />
-                        <span>Joined {user.joinDate}</span>
-                      </div>
-                      <div className="flex items-center">
-                        <MapPin size={16} className="mr-1" />
-                        <span>{user.location}</span>
+                        <span>Joined {userData.joinDate}</span>
                       </div>
                       <div className="flex items-center">
                         <Mail size={16} className="mr-1" />
-                        <span>{user.email}</span>
+                        <span>{userData.email}</span>
                       </div>
                     </div>
                   </div>
@@ -214,23 +247,23 @@ export default function ViewProfile() {
                 </button>
               </div>
               
-              <p className="mt-4 text-gray-600">{user.bio}</p>
+              <p className="mt-4 text-gray-600">{userData.bio}</p>
               
               <div className="flex items-center space-x-8 mt-6">
                 <div className="text-center">
-                  <div className="text-xl font-bold text-gray-900">{user.stats.posts}</div>
+                  <div className="text-xl font-bold text-gray-900">{postCount}</div>
                   <div className="text-sm text-gray-500">Posts</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-xl font-bold text-gray-900">{user.stats.followers}</div>
+                  <div className="text-xl font-bold text-gray-900">{userData.stats?.followers || 0}</div>
                   <div className="text-sm text-gray-500">Followers</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-xl font-bold text-gray-900">{user.stats.following}</div>
+                  <div className="text-xl font-bold text-gray-900">{userData.stats?.following || 0}</div>
                   <div className="text-sm text-gray-500">Following</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-xl font-bold text-gray-900">{user.stats.watchlist}</div>
+                  <div className="text-xl font-bold text-gray-900">{userData.stats?.watchlist || 0}</div>
                   <div className="text-sm text-gray-500">Watchlist</div>
                 </div>
               </div>
@@ -273,35 +306,29 @@ export default function ViewProfile() {
               <div className="p-6">
                 {activeTab === 'activity' && (
                   <div className="space-y-4">
-                    {user.recentActivity.map((activity, index) => (
-                      <div key={index} className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg">
-                        {activity.type === 'review' && (
-                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-blue-100">
-                            <Star size={20} className="text-blue-600" />
-                          </div>
-                        )}
-                        {activity.type === 'watchlist' && (
-                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-green-100">
-                            <BookmarkPlus size={20} className="text-green-600" />
-                          </div>
-                        )}
-                        {activity.type === 'post' && (
-                          <div className="flex items-center justify-center w-10 h-10 rounded-full bg-purple-100">
-                            <User size={20} className="text-purple-600" />
-                          </div>
-                        )}
+                    {userPosts.map((post, index) => (
+                      <div 
+                        key={index} 
+                        className="flex items-start space-x-4 p-4 bg-gray-50 rounded-lg cursor-pointer hover:bg-gray-100"
+                        onClick={() => openPostModal(post)}
+                      >
+                        <div className="flex items-center justify-center w-10 h-10 rounded-full bg-purple-100">
+                          <User size={20} className="text-purple-600" />
+                        </div>
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
-                            <h3 className="font-medium text-gray-900">{activity.title}</h3>
-                            <span className="text-sm text-gray-500">{activity.date}</span>
+                            <h3 className="font-medium text-gray-900">{post.contentText}</h3>
+                            <span className="text-sm text-gray-500">
+                              {new Date(post.dateOfPost).toLocaleDateString()}
+                            </span>
                           </div>
-                          {activity.rating && (
-                            <div className="flex items-center mt-1">
-                              {[...Array(activity.rating)].map((_, i) => (
-                                <Star key={i} size={16} className="text-yellow-400 fill-current" />
-                              ))}
-                            </div>
+                          {post.media && (
+                            <img src={post.media} alt="Post media" className="mt-2 rounded-lg" />
                           )}
+                          <div className="flex items-center mt-2">
+                            <ArrowUp size={14} className="mr-1" />
+                            <span>{post.upvoteCount}</span>
+                          </div>
                         </div>
                       </div>
                     ))}
@@ -310,24 +337,19 @@ export default function ViewProfile() {
 
                 {activeTab === 'comments' && (
                   <div className="space-y-4">
-                    {user.comments.map((comment) => (
+                    {userPosts.filter(post => post.contentText.startsWith('Comment:')).map((comment) => (
                       <div key={comment.id} className="bg-gray-50 rounded-lg p-4">
                         <div className="flex items-center justify-between mb-2">
-                          <h3 className="font-medium text-gray-900">{comment.postTitle}</h3>
-                          <span className="text-sm text-gray-500">{comment.date}</span>
+                          <h3 className="font-medium text-gray-900">{comment.contentText}</h3>
+                          <span className="text-sm text-gray-500">
+                            {new Date(comment.dateOfPost).toLocaleDateString()}
+                          </span>
                         </div>
-                        <p className="text-gray-700 mb-3">{comment.content}</p>
                         <div className="flex items-center text-sm text-gray-500">
                           <div className="flex items-center">
                             <ArrowUp size={14} className="mr-1" />
-                            {comment.upvotes}
+                            {comment.upvoteCount}
                           </div>
-                          <button 
-                            onClick={() => navigate(`/post/${comment.postId}`)}
-                            className="ml-4 text-blue-600 hover:text-blue-700"
-                          >
-                            View Post
-                          </button>
                         </div>
                       </div>
                     ))}
@@ -338,6 +360,65 @@ export default function ViewProfile() {
           </div>
         </div>
       </div>
+
+      {/* Post Modal */}
+      {isModalOpen && selectedPost && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
+          <div className="bg-white rounded-lg max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto">
+            <div className="p-4 border-b border-gray-200 flex justify-between items-center">
+              <h2 className="text-xl font-semibold">Post Details</h2>
+              <button 
+                onClick={closePostModal}
+                className="p-2 hover:bg-gray-100 rounded-full"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6">
+              <div className="flex items-center space-x-4 mb-4">
+                <div className="flex items-center justify-center w-10 h-10 rounded-full bg-purple-100">
+                  <User size={20} className="text-purple-600" />
+                </div>
+                <div>
+                  <h3 className="font-medium">{userData.username}</h3>
+                  <span className="text-sm text-gray-500">
+                    {new Date(selectedPost.dateOfPost).toLocaleDateString()}
+                  </span>
+                </div>
+              </div>
+              
+              <p className="text-gray-800 mb-4">{selectedPost.contentText}</p>
+              
+              {selectedPost.media && (
+                <img 
+                  src={selectedPost.media} 
+                  alt="Post media" 
+                  className="w-full rounded-lg mb-4"
+                />
+              )}
+              
+              <div className="flex items-center space-x-4 text-gray-500">
+                <div className="flex items-center">
+                  <ArrowUp size={16} className="mr-1" />
+                  <span>{selectedPost.upvoteCount}</span>
+                </div>
+                {selectedPost.movieID && (
+                  <div className="flex items-center">
+                    <Film size={16} className="mr-1" />
+                    <span>Movie Review</span>
+                  </div>
+                )}
+                {selectedPost.tvShowID && (
+                  <div className="flex items-center">
+                    <Tv size={16} className="mr-1" />
+                    <span>TV Show Review</span>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
-} 
+}

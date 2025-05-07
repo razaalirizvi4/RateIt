@@ -311,13 +311,13 @@ app.get('/api/tvshows', async (req, res) => {
     }
 });
 
-// Configure multer for file uploads
+// Configure multer for file uploads (keep only one instance)
 const storage = multer.diskStorage({
     destination: (req, file, cb) => {
-        cb(null, uploadsDir); // Use the uploads directory
+        cb(null, uploadsDir);
     },
     filename: (req, file, cb) => {
-        cb(null, `${Date.now()}-${file.originalname}`); // Unique filename
+        cb(null, `${Date.now()}-${file.originalname}`);
     }
 });
 
@@ -379,4 +379,487 @@ app.post('/api/login', async (req, res) => {
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
 });
+
+// Get user's posts endpoint
+app.get('/api/posts', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const { searchTerm, username, movieId, tvShowId, tag } = req.query;
+
+        // Call the stored procedure with optional parameters
+        const result = await pool.request()
+            .input('searchTerm', sql.VarChar, searchTerm || null)
+            .input('username', sql.VarChar, username || null)
+            .input('movieID', sql.Int, movieId ? parseInt(movieId) : null)
+            .input('tvShowID', sql.Int, tvShowId ? parseInt(tvShowId) : null)
+            .input('tag', sql.VarChar, tag || null)
+            .execute('sp_SearchPosts');
+
+        res.json(result.recordset);
+    } catch (error) {
+        console.error('Error fetching posts:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add endpoint to create a new post
+app.post('/api/posts', async (req, res) => {
+    try {
+        const { username, contentText, movieId, tvShowId, tags, pollId } = req.body;
+        const pool = await sql.connect(dbConfig);
+
+        // Ensure tags is a string or null
+        const sanitizedTags = tags ? String(tags).trim() : null;
+
+        // Call the stored procedure to create a post
+        const result = await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('contentText', sql.VarChar, contentText)
+            .input('media', sql.VarBinary, null) // Handle media separately if needed
+            .input('pollID', sql.Int, pollId || null)
+            .input('movieID', sql.Int, movieId || null)
+            .input('tvShowID', sql.Int, tvShowId || null)
+            .input('tags', sql.VarChar(500), sanitizedTags) // Add max length and ensure it's a valid string
+            .execute('sp_CreatePost');
+
+        res.json({ postId: result.recordset[0].PostID });
+    } catch (error) {
+        console.error('Error creating post:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add endpoint to delete a post
+app.delete('/api/posts/:postId', async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const pool = await sql.connect(dbConfig);
+
+        // Call the stored procedure to delete the post
+        await pool.request()
+            .input('postID', sql.Int, parseInt(postId))
+            .execute('sp_DeletePost');
+
+        res.json({ message: 'Post deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting post:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add endpoints for post interactions (upvotes)
+app.post('/api/posts/:postId/upvote', async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { userId, vote } = req.body;
+        const pool = await sql.connect(dbConfig);
+
+        // Call the appropriate stored procedure based on vote type
+        
+            await pool.request()
+                .input('postID', sql.Int, parseInt(postId))
+                
+                .execute('sp_UpvotePost');
+        
+
+        // Get updated upvote count
+        const result = await pool.request()
+            .input('postID', sql.Int, parseInt(postId))
+            .query(`
+                SELECT upvoteCount from POST_CONTENT
+                WHERE postID = @postID
+            `);
+
+        // Get user's current vote status
+       
+
+        res.json({
+            upvoteCount: result.recordset[0].upvoteCount,
+            userVote: 1 // Assuming user voted up
+        });
+    } catch (error) {
+        console.error('Error handling post vote:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+app.post('/api/posts/:postId/removeupvote', async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const pool = await sql.connect(dbConfig);
+
+        await pool.request()
+            .input('postID', sql.Int, parseInt(postId))
+            .execute('sp_RemovePostUpvote');
+
+            const result = await pool.request()
+            .input('postID', sql.Int, parseInt(postId))
+            .query(`
+                SELECT upvoteCount from POST_CONTENT
+                WHERE postID = @postID
+            `);
+
+            res.json({
+                upvoteCount: result.recordset[0].upvoteCount,
+                userVote: 0 // Assuming user voted up
+            });
+    } catch (error) {
+        console.error('Error removing post upvote:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+
+
+// Register endpoint
+app.post('/api/register', upload.single('profilePicture'), async (req, res) => {
+    const { username, email, password, bio, accountType } = req.body;
+    const profilePicturePath = req.file ? req.file.path.replace(/\\/g, '/').slice(9) : null; // Normalize path for URL
+
+    try {
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar(50), username)
+            .input('email', sql.VarChar(100), email)
+            .input('password', sql.VarChar(100), password)
+            .input('bio', sql.VarChar(sql.MAX), bio)
+            .input('accountType', sql.VarChar(sql.MAX), accountType)
+            .input('pfp', sql.VarChar(sql.MAX), profilePicturePath) // Save the normalized path
+            .execute('sp_RegisterUser'); // Call your stored procedure
+
+        res.status(201).send('User registered successfully');
+    } catch (error) {
+        console.error('Error registering user:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Login endpoint
+app.post('/api/login', async (req, res) => {
+    const { username, password } = req.body;
+
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('username', sql.VarChar(50), username)
+            .input('password', sql.VarChar(100), password)
+            .query('SELECT * FROM USERS WHERE username = @username AND password = @password');
+
+        if (result.recordset.length > 0) {
+            // User found, return user data (excluding password)
+            const user = result.recordset[0];
+            const profilePicturePath = user.pfp ? `http://localhost:3001${user.pfp}` : null; // Use the relative path
+            res.status(200).json({
+                username: user.username,
+                email: user.email,
+                bio: user.bio,
+                pfp: profilePicturePath // Return the profile picture path as a URL
+            });
+        } else {
+            res.status(401).send('Invalid username or password');
+        }
+    } catch (error) {
+        console.error('Error logging in:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+app.listen(port, () => {
+    console.log(`Server running on http://localhost:${port}`);
+});
+
+// Get user's posts endpoint
+app.get('/api/posts/:username', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('username', sql.VarChar, req.params.username)
+            .query(`
+                SELECT * FROM POST_CONTENT 
+                WHERE username = @username 
+                ORDER BY dateOfPost DESC
+            `);
+        
+        res.json(result.recordset);
+    } catch (error) {
+        console.error('Error fetching user posts:', error);
+        res.status(500).json({ error: 'Error fetching user posts' });
+    }
+});
+
+app.get('/api/posts/:username/count', async (req, res) => {
+    try {
+      const { username } = req.params;
+      const query = `
+        SELECT COUNT(*) as postCount 
+        FROM post_content 
+        WHERE username = @username
+      `;
+      
+      const result = await pool.request()
+        .input('username', sql.VarChar, username)
+        .query(query);
+        
+      res.json({ count: result.recordset[0].postCount });
+    } catch (error) {
+      console.error('Error counting posts:', error);
+      res.status(500).json({ error: 'Failed to count posts' });
+    }
+  });
+
+// Get all posts
+app.get('/api/posts', async (req, res) => {
+  try {
+    const pool = await sql.connect(dbConfig);
+    const result = await pool.request().query(`
+      SELECT 
+        p.*,
+        u.username as author,
+        u.pfp as authorAvatar,
+        (SELECT COUNT(*) FROM POST_VOTES WHERE postID = p.postID AND voteType = 'up') as upvotes,
+        (SELECT COUNT(*) FROM POST_VOTES WHERE postID = p.postID AND voteType = 'down') as downvotes
+      FROM POST_CONTENT p
+      JOIN USERS u ON p.username = u.username
+      ORDER BY p.dateOfPost DESC
+    `);
+    res.json(result.recordset);
+  } catch (error) {
+    console.error('Error fetching posts:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Create a new post
+app.post('/api/posts', async (req, res) => {
+  try {
+    const { title, content, userId } = req.body;
+    const pool = await sql.connect(dbConfig);
+    
+    const result = await pool.request()
+      .input('title', sql.VarChar, title)
+      .input('content', sql.VarChar, content)
+      .input('userId', sql.Int, userId)
+      .query(`
+        INSERT INTO POST_CONTENT (title, contentText, username, dateOfPost)
+        OUTPUT INSERTED.*
+        VALUES (@title, @content, (SELECT username FROM USERS WHERE id = @userId), GETDATE())
+      `);
+    
+    res.json(result.recordset[0]);
+  } catch (error) {
+    console.error('Error creating post:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Vote on a post
+app.post('/api/posts/:postId/vote', async (req, res) => {
+  try {
+    const { postId } = req.params;
+    const { userId, vote } = req.body;
+    const pool = await sql.connect(dbConfig);
+
+    // Check if user has already voted
+    const existingVote = await pool.request()
+      .input('postId', sql.Int, postId)
+      .input('userId', sql.Int, userId)
+      .query('SELECT voteType FROM POST_VOTES WHERE postID = @postId AND userID = @userId');
+
+    if (existingVote.recordset.length > 0) {
+      // Update existing vote
+      await pool.request()
+        .input('postId', sql.Int, postId)
+        .input('userId', sql.Int, userId)
+        .input('voteType', sql.VarChar, vote)
+        .query('UPDATE POST_VOTES SET voteType = @voteType WHERE postID = @postId AND userID = @userId');
+    } else {
+      // Create new vote
+      await pool.request()
+        .input('postId', sql.Int, postId)
+        .input('userId', sql.Int, userId)
+        .input('voteType', sql.VarChar, vote)
+        .query('INSERT INTO POST_VOTES (postID, userID, voteType) VALUES (@postId, @userId, @voteType)');
+    }
+
+    // Get updated vote counts
+    const voteCounts = await pool.request()
+      .input('postId', sql.Int, postId)
+      .query(`
+        SELECT 
+          (SELECT COUNT(*) FROM POST_VOTES WHERE postID = @postId AND voteType = 'up') as upvotes,
+          (SELECT COUNT(*) FROM POST_VOTES WHERE postID = @postId AND voteType = 'down') as downvotes
+      `);
+
+    res.json({
+      ...voteCounts.recordset[0],
+      userVote: vote
+    });
+  } catch (error) {
+    console.error('Error voting on post:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+// Add a comment to a post
+// Add comment endpoints
+app.post('/api/posts/:postId/comments', async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { username, commentText } = req.body;
+
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('postID', sql.Int, postId)
+            .input('username', sql.VarChar, username)
+            .input('commentText', sql.VarChar, commentText)
+            .execute('sp_PostComment');
+
+        const commentId = result.recordset[0].CommentID;
+        
+        // Fetch the newly created comment
+        const commentResult = await pool.request()
+            .input('postID', sql.Int, postId)
+            .execute('sp_GetPostComments');
+
+        const newComment = commentResult.recordset.find(comment => comment.commentID === commentId);
+        res.json(newComment);
+    } catch (error) {
+        console.error('Error posting comment:', error);
+        res.status(500).json({ error: 'Failed to post comment' });
+    }
+});
+
+
+
+app.post('/api/comments/:commentId/removeupvote', async (req, res) => {
+    try {
+        const { commentId } = req.params;
+        
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('commentID', sql.Int, commentId)
+            .execute('sp_RemoveCommentUpvote');
+
+        res.json({ message: 'Comment upvote removed successfully' });
+    } catch (error) {
+        console.error('Error removing comment upvote:', error);
+        res.status(500).json({ error: 'Failed to remove comment upvote' });
+    }
+});
+
+
+
+// Register endpoint
+app.post('/api/register', upload.single('profilePicture'), async (req, res) => {
+    const { username, email, password, bio, accountType } = req.body;
+    const profilePicturePath = req.file ? req.file.path.replace(/\\/g, '/').slice(9) : null; // Normalize path for URL
+
+    try {
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar(50), username)
+            .input('email', sql.VarChar(100), email)
+            .input('password', sql.VarChar(100), password)
+            .input('bio', sql.VarChar(sql.MAX), bio)
+            .input('accountType', sql.VarChar(sql.MAX), accountType)
+            .input('pfp', sql.VarChar(sql.MAX), profilePicturePath) // Save the normalized path
+            .execute('sp_RegisterUser'); // Call your stored procedure
+
+        res.status(201).send('User registered successfully');
+    } catch (error) {
+        console.error('Error registering user:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Login endpoint
+app.post('/api/login', async (req, res) => {
+    const { username, password } = req.body;
+
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('username', sql.VarChar(50), username)
+            .input('password', sql.VarChar(100), password)
+            .query('SELECT * FROM USERS WHERE username = @username AND password = @password');
+
+        if (result.recordset.length > 0) {
+            // User found, return user data (excluding password)
+            const user = result.recordset[0];
+            const profilePicturePath = user.pfp ? `http://localhost:3001${user.pfp}` : null; // Use the relative path
+            res.status(200).json({
+                username: user.username,
+                email: user.email,
+                bio: user.bio,
+                pfp: profilePicturePath // Return the profile picture path as a URL
+            });
+        } else {
+            res.status(401).send('Invalid username or password');
+        }
+    } catch (error) {
+        console.error('Error logging in:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+app.get('/api/posts/:postId/comments', async (req, res) => {
+    try {
+      const { postId } = req.params;
+      const { sortBy = 'recent' } = req.query;
+      
+      const pool = await sql.connect(dbConfig);
+      const result = await pool.request()
+        .input('postID', sql.Int, postId)
+        .input('sortBy', sql.VarChar(20), sortBy)
+        .execute('sp_GetPostComments');
+        
+      res.json(result.recordset);
+    } catch (error) {
+      console.error('Error fetching comments:', error);
+      res.status(500).json({ error: 'Failed to fetch comments' });
+    }
+  });
+
+app.listen(port, () => {
+    console.log(`Server running on http://localhost:${port}`);
+});
+
+// Get user's posts endpoint
+app.get('/api/posts/:username', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('username', sql.VarChar, req.params.username)
+            .query(`
+                SELECT * FROM POST_CONTENT 
+                WHERE username = @username 
+                ORDER BY dateOfPost DESC
+            `);
+        
+        res.json(result.recordset);
+    } catch (error) {
+        console.error('Error fetching user posts:', error);
+        res.status(500).json({ error: 'Error fetching user posts' });
+    }
+});
+
+app.get('/api/posts/:username/count', async (req, res) => {
+    try {
+      const { username } = req.params;
+      const query = `
+        SELECT COUNT(*) as postCount 
+        FROM post_content 
+        WHERE username = @username
+      `;
+      
+      const result = await pool.request()
+        .input('username', sql.VarChar, username)
+        .query(query);
+        
+      res.json({ count: result.recordset[0].postCount });
+    } catch (error) {
+      console.error('Error counting posts:', error);
+      res.status(500).json({ error: 'Failed to count posts' });
+    }
+  });
 
