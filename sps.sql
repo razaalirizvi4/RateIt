@@ -312,6 +312,7 @@ BEGIN
         p.tags,
         p.dateOfPost,
         p.upvoteCount,
+        p.title,
         CASE 
             WHEN p.movieID IS NOT NULL THEN m.name
             WHEN p.tvShowID IS NOT NULL THEN t.[Name]

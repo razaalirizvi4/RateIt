@@ -52,7 +52,7 @@ export default function SocialFeed({ onInteract }) {
         movieID: null,
         tvShowID: null,
         tags: newPost.tags || null,
-        title: newPost.content.title // Changed from newPost.title to newPost.content.title
+        title: newPost.title // Fixed: Access title directly from newPost
       };
 
       const response = await axios.post('http://localhost:3001/api/posts', postData);

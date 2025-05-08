@@ -337,7 +337,7 @@ export default function ViewProfile() {
 
                 {activeTab === 'comments' && (
                   <div className="space-y-4">
-                    {userPosts.filter(post => post.contentText.startsWith('Comment:')).map((comment) => (
+                    {userPosts.filter(post => post.contentText?.startsWith('Comment:')).map((comment) => (
                       <div key={comment.id} className="bg-gray-50 rounded-lg p-4">
                         <div className="flex items-center justify-between mb-2">
                           <h3 className="font-medium text-gray-900">{comment.contentText}</h3>

@@ -8,6 +8,7 @@ import ViewProfile from './ViewProfile';
 import Settings from './Settings';
 import Recommendations from './Recommendations';
 import LoginSignup from './LoginSignup';
+import Watchlist from './Watchlist';
 
 function App() {
   const [isPopupOpen, setPopupOpen] = useState(false);
@@ -32,6 +33,7 @@ function App() {
         <Route path="/profile" element={<ViewProfile />} />
         <Route path="/settings" element={<Settings />} />
         <Route path="/recommendations" element={<Recommendations />} />
+        <Route path="/watchlist" element={<Watchlist />} /> {/* Add this new route */}
       </Routes>
       {isPopupOpen && <LoginSignup onClose={() => setPopupOpen(false)} />}
     </Router>

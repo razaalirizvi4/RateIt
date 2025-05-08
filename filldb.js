@@ -234,8 +234,8 @@ const fetchTVShows = async () => {
                     headers: {
                         accept: 'application/json',
                         Authorization: 'Bearer eyJhbGciOiJIUzI1NiJ9.eyJhdWQiOiIzNjYyZjViNmJiZjY5YTlhMTNmOWUzYTQxZGQ3YjExNyIsIm5iZiI6MTc0NjM1NTM2Mi43MjEsInN1YiI6IjY4MTc0NGEyNzhlMzI5YzJlOWY0ODJjMiIsInNjb3BlcyI6WyJhcGlfcmVhZCJdLCJ2ZXJzaW9uIjoxfQ.nn0ri6eIyjy8k12I4HkZ3Rn-VeNxVfU_eKHNDIK3lGA' // Replace with your actual API key
-                    }
-                });
+                }
+            });
 
                 const detailedShow = detailsResponse.data;
                 const number_of_seasons = detailedShow.number_of_seasons || 0; // Default to 0 if missing
@@ -376,6 +376,237 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
+// Get user's watchlist
+app.get('/api/watchlist/:username', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('username', sql.VarChar, req.params.username)
+            .execute('GetWatchlistForUser');
+
+        // Transform the data to match the frontend expectations
+        const watchlistItems = result.recordset.map(item => ({
+            id: parseInt(item.id, 10), // Ensure ID is a number
+            title: item.name || item.Name,
+            type: item.Type.toLowerCase(),
+            poster: item.posters,
+            genre: item.genre,
+            rating: item.rating || 0,
+            description: item.description || '',
+            year: item.release_year || '',
+            director: item.director || ''
+        }));
+
+        res.json(watchlistItems);
+    } catch (error) {
+        console.error('Error fetching watchlist:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add movie to watchlist
+app.post('/api/watchlist/movie', async (req, res) => {
+    try {
+        const { username, movieId } = req.body;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('movieID', sql.Int, movieId)
+            .execute('AddMovieToWatchlist');
+        res.status(200).send('Movie added to watchlist');
+    } catch (error) {
+        console.error('Error adding to watchlist:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Remove movie from watchlist
+app.delete('/api/watchlist/movie/:username/:movieId', async (req, res) => {
+    try {
+        const { username, movieId } = req.params;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('movieID', sql.Int, parseInt(movieId, 10))
+            .execute('RemoveMovieFromWatchlist');
+        res.status(200).send('Movie removed from watchlist');
+    } catch (error) {
+        console.error('Error removing from watchlist:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add endpoint for getting recommendations based on watchlist
+app.get('/api/recommendations/:username', async (req, res) => {
+    try {
+        const { username } = req.params;
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('username', sql.VarChar(50), username)
+            .execute('RecommendBasedOnWatchlist');
+        res.json(result.recordset);
+    } catch (error) {
+        console.error('Error getting recommendations:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add endpoint for getting user's post history
+app.get('/api/posts/user/:username', async (req, res) => {
+    try {
+        const { username } = req.params;
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('username', sql.VarChar(50), username)
+            .execute('GetUserPostHistory');
+        res.json(result.recordset);
+    } catch (error) {
+        console.error('Error fetching user posts:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add endpoint for getting posts sorted by account type
+app.get('/api/posts/sorted', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .execute('GetPostsSortedByAccountType');
+        res.json(result.recordset);
+    } catch (error) {
+        console.error('Error fetching sorted posts:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add endpoint for getting post comments
+app.get('/api/posts/:postId/comments', async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { sortBy = 'recent' } = req.query;
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('postID', sql.Int, parseInt(postId))
+            .input('sortBy', sql.VarChar(20), sortBy)
+            .execute('sp_GetPostComments');
+        res.json(result.recordset);
+    } catch (error) {
+        console.error('Error fetching post comments:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add endpoint for posting a comment
+app.post('/api/posts/:postId/comments', async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { username, commentText } = req.body;
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('postID', sql.Int, parseInt(postId))
+            .input('username', sql.VarChar(50), username)
+            .input('commentText', sql.VarChar(sql.MAX), commentText)
+            .execute('sp_PostComment');
+        res.json({ commentId: result.recordset[0].CommentID });
+    } catch (error) {
+        console.error('Error posting comment:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add endpoint for deleting a comment
+app.delete('/api/comments/:commentId', async (req, res) => {
+    try {
+        const { commentId } = req.params;
+        const { username } = req.body;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('commentID', sql.Int, parseInt(commentId))
+            .input('username', sql.VarChar(50), username)
+            .execute('sp_DeleteComment');
+        res.json({ message: 'Comment deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting comment:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Get user's watchlist
+app.get('/api/watchlist/:username', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('username', sql.VarChar, req.params.username)
+            .execute('GetWatchlistForUser');
+
+        // Transform the data to match the frontend expectations
+        const watchlistItems = result.recordset.map(item => ({
+            id: parseInt(item.MovieID || item.TVShow_ID, 10), // Ensure ID is a number
+            title: item.name || item.Name,
+            type: item.Type.toLowerCase(),
+            poster: item.posters,
+            genre: item.genre,
+            rating: item.rating || 0,
+            description: item.description || '',
+            year: item.release_year || '',
+            director: item.director || ''
+        }));
+
+        res.json(watchlistItems);
+    } catch (error) {
+        console.error('Error fetching watchlist:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add delete endpoint for watchlist
+app.delete('/api/watchlist/:username/:movieId', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, req.params.username)
+            .input('movieID', sql.Int, req.params.movieId)
+            .execute('RemoveMovieFromWatchlist');
+        
+        res.status(200).json({ message: 'Movie removed from watchlist successfully' });
+    } catch (error) {
+        console.error('Error removing movie from watchlist:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add movie to watchlist
+app.post('/api/watchlist/movie', async (req, res) => {
+    try {
+        const { username, movieId } = req.body;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('movieID', sql.Int, movieId)
+            .execute('AddMovieToWatchlist');
+        res.status(200).send('Movie added to watchlist');
+    } catch (error) {
+        console.error('Error adding to watchlist:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Remove movie from watchlist
+app.delete('/api/watchlist/movie/:username/:movieId', async (req, res) => {
+    try {
+        const { username, movieId } = req.params;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('movieID', sql.Int, parseInt(movieId, 10))
+            .execute('RemoveMovieFromWatchlist');
+        res.status(200).send('Movie removed from watchlist');
+    } catch (error) {
+        console.error('Error removing from watchlist:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
 });
@@ -393,6 +624,7 @@ app.get('/api/posts', async (req, res) => {
             .input('movieID', sql.Int, movieId ? parseInt(movieId) : null)
             .input('tvShowID', sql.Int, tvShowId ? parseInt(tvShowId) : null)
             .input('tag', sql.VarChar, tag || null)
+            
             .execute('sp_SearchPosts');
 
         res.json(result.recordset);
@@ -405,24 +637,32 @@ app.get('/api/posts', async (req, res) => {
 // Add endpoint to create a new post
 app.post('/api/posts', async (req, res) => {
     try {
-        const { username, contentText, movieId, tvShowId, tags, pollId } = req.body;
+        const { username, contentText, movieId, tvShowId, tags, pollId, title } = req.body;
         const pool = await sql.connect(dbConfig);
 
         // Ensure tags is a string or null
         const sanitizedTags = tags ? String(tags).trim() : null;
 
-        // Call the stored procedure to create a post
+        // First call the stored procedure to create a post
         const result = await pool.request()
             .input('username', sql.VarChar, username)
             .input('contentText', sql.VarChar, contentText)
-            .input('media', sql.VarBinary, null) // Handle media separately if needed
+            .input('media', sql.VarBinary, null)
             .input('pollID', sql.Int, pollId || null)
             .input('movieID', sql.Int, movieId || null)
             .input('tvShowID', sql.Int, tvShowId || null)
-            .input('tags', sql.VarChar(500), sanitizedTags) // Add max length and ensure it's a valid string
+            .input('tags', sql.VarChar(500), sanitizedTags)
             .execute('sp_CreatePost');
 
-        res.json({ postId: result.recordset[0].PostID });
+        const postId = result.recordset[0].PostID;
+
+        // Then update the title for the newly created post
+        await pool.request()
+            .input('postID', sql.Int, postId)
+            .input('title', sql.VarChar(200), title || 'Untitled')
+            .query('UPDATE POST_CONTENT SET title = @title WHERE postID = @postID');
+
+        res.json({ postId: postId });
     } catch (error) {
         console.error('Error creating post:', error);
         res.status(500).send('Internal Server Error');
@@ -560,6 +800,253 @@ app.post('/api/login', async (req, res) => {
         }
     } catch (error) {
         console.error('Error logging in:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Get user's watchlist
+app.get('/api/watchlist/:username', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('username', sql.VarChar, req.params.username)
+            .execute('GetWatchlistForUser');
+
+        // Transform the data to match the frontend expectations
+        const watchlistItems = result.recordset.map(item => ({
+            id: parseInt(item.MovieID || item.TVShow_ID, 10), // Ensure ID is a number
+            title: item.name || item.Name,
+            type: item.Type.toLowerCase(),
+            poster: item.posters,
+            genre: item.genre,
+            rating: item.rating || 0,
+            description: item.description || '',
+            year: item.release_year || '',
+            director: item.director || ''
+        }));
+
+        res.json(watchlistItems);
+    } catch (error) {
+        console.error('Error fetching watchlist:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add delete endpoint for watchlist
+app.delete('/api/watchlist/:username/:movieId', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, req.params.username)
+            .input('movieID', sql.Int, req.params.movieId)
+            .execute('RemoveMovieFromWatchlist');
+        
+        res.status(200).json({ message: 'Movie removed from watchlist successfully' });
+    } catch (error) {
+        console.error('Error removing movie from watchlist:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add movie to watchlist
+app.post('/api/watchlist/movie', async (req, res) => {
+    try {
+        const { username, movieId } = req.body;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('movieID', sql.Int, movieId)
+            .execute('AddMovieToWatchlist');
+        res.status(200).send('Movie added to watchlist');
+    } catch (error) {
+        console.error('Error adding to watchlist:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Remove movie from watchlist
+app.delete('/api/watchlist/movie/:username/:movieId', async (req, res) => {
+    try {
+        const { username, movieId } = req.params;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('movieID', sql.Int, parseInt(movieId, 10))
+            .execute('RemoveMovieFromWatchlist');
+        res.status(200).send('Movie removed from watchlist');
+    } catch (error) {
+        console.error('Error removing from watchlist:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add endpoint for getting recommendations based on watchlist
+app.get('/api/recommendations/:username', async (req, res) => {
+    try {
+        const { username } = req.params;
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('username', sql.VarChar(50), username)
+            .execute('RecommendBasedOnWatchlist');
+        res.json(result.recordset);
+    } catch (error) {
+        console.error('Error getting recommendations:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add endpoint for getting user's post history
+app.get('/api/posts/user/:username', async (req, res) => {
+    try {
+        const { username } = req.params;
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('username', sql.VarChar(50), username)
+            .execute('GetUserPostHistory');
+        res.json(result.recordset);
+    } catch (error) {
+        console.error('Error fetching user posts:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add endpoint for getting posts sorted by account type
+app.get('/api/posts/sorted', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .execute('GetPostsSortedByAccountType');
+        res.json(result.recordset);
+    } catch (error) {
+        console.error('Error fetching sorted posts:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add endpoint for getting post comments
+app.get('/api/posts/:postId/comments', async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { sortBy = 'recent' } = req.query;
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('postID', sql.Int, parseInt(postId))
+            .input('sortBy', sql.VarChar(20), sortBy)
+            .execute('sp_GetPostComments');
+        res.json(result.recordset);
+    } catch (error) {
+        console.error('Error fetching post comments:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add endpoint for posting a comment
+app.post('/api/posts/:postId/comments', async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { username, commentText } = req.body;
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('postID', sql.Int, parseInt(postId))
+            .input('username', sql.VarChar(50), username)
+            .input('commentText', sql.VarChar(sql.MAX), commentText)
+            .execute('sp_PostComment');
+        res.json({ commentId: result.recordset[0].CommentID });
+    } catch (error) {
+        console.error('Error posting comment:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add endpoint for deleting a comment
+app.delete('/api/comments/:commentId', async (req, res) => {
+    try {
+        const { commentId } = req.params;
+        const { username } = req.body;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('commentID', sql.Int, parseInt(commentId))
+            .input('username', sql.VarChar(50), username)
+            .execute('sp_DeleteComment');
+        res.json({ message: 'Comment deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting comment:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Get user's watchlist
+app.get('/api/watchlist/:username', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('username', sql.VarChar, req.params.username)
+            .execute('GetWatchlistForUser');
+
+        // Transform the data to match the frontend expectations
+        const watchlistItems = result.recordset.map(item => ({
+            id: parseInt(item.MovieID || item.TVShow_ID, 10), // Ensure ID is a number
+            title: item.name || item.Name,
+            type: item.Type.toLowerCase(),
+            poster: item.posters,
+            genre: item.genre,
+            rating: item.rating || 0,
+            description: item.description || '',
+            year: item.release_year || '',
+            director: item.director || ''
+        }));
+
+        res.json(watchlistItems);
+    } catch (error) {
+        console.error('Error fetching watchlist:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add delete endpoint for watchlist
+app.delete('/api/watchlist/:username/:movieId', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, req.params.username)
+            .input('movieID', sql.Int, req.params.movieId)
+            .execute('RemoveMovieFromWatchlist');
+        
+        res.status(200).json({ message: 'Movie removed from watchlist successfully' });
+    } catch (error) {
+        console.error('Error removing movie from watchlist:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add movie to watchlist
+app.post('/api/watchlist/movie', async (req, res) => {
+    try {
+        const { username, movieId } = req.body;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('movieID', sql.Int, movieId)
+            .execute('AddMovieToWatchlist');
+        res.status(200).send('Movie added to watchlist');
+    } catch (error) {
+        console.error('Error adding to watchlist:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Remove movie from watchlist
+app.delete('/api/watchlist/movie/:username/:movieId', async (req, res) => {
+    try {
+        const { username, movieId } = req.params;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('movieID', sql.Int, parseInt(movieId, 10))
+            .execute('RemoveMovieFromWatchlist');
+        res.status(200).send('Movie removed from watchlist');
+    } catch (error) {
+        console.error('Error removing from watchlist:', error);
         res.status(500).send('Internal Server Error');
     }
 });
@@ -820,6 +1307,253 @@ app.get('/api/posts/:postId/comments', async (req, res) => {
     }
   });
 
+// Get user's watchlist
+app.get('/api/watchlist/:username', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('username', sql.VarChar, req.params.username)
+            .execute('GetWatchlistForUser');
+
+        // Transform the data to match the frontend expectations
+        const watchlistItems = result.recordset.map(item => ({
+            id: parseInt(item.MovieID || item.TVShow_ID, 10), // Ensure ID is a number
+            title: item.name || item.Name,
+            type: item.Type.toLowerCase(),
+            poster: item.posters,
+            genre: item.genre,
+            rating: item.rating || 0,
+            description: item.description || '',
+            year: item.release_year || '',
+            director: item.director || ''
+        }));
+
+        res.json(watchlistItems);
+    } catch (error) {
+        console.error('Error fetching watchlist:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add delete endpoint for watchlist
+app.delete('/api/watchlist/:username/:movieId', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, req.params.username)
+            .input('movieID', sql.Int, req.params.movieId)
+            .execute('RemoveMovieFromWatchlist');
+        
+        res.status(200).json({ message: 'Movie removed from watchlist successfully' });
+    } catch (error) {
+        console.error('Error removing movie from watchlist:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add movie to watchlist
+app.post('/api/watchlist/movie', async (req, res) => {
+    try {
+        const { username, movieId } = req.body;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('movieID', sql.Int, movieId)
+            .execute('AddMovieToWatchlist');
+        res.status(200).send('Movie added to watchlist');
+    } catch (error) {
+        console.error('Error adding to watchlist:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Remove movie from watchlist
+app.delete('/api/watchlist/movie/:username/:movieId', async (req, res) => {
+    try {
+        const { username, movieId } = req.params;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('movieID', sql.Int, parseInt(movieId, 10))
+            .execute('RemoveMovieFromWatchlist');
+        res.status(200).send('Movie removed from watchlist');
+    } catch (error) {
+        console.error('Error removing from watchlist:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add endpoint for getting recommendations based on watchlist
+app.get('/api/recommendations/:username', async (req, res) => {
+    try {
+        const { username } = req.params;
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('username', sql.VarChar(50), username)
+            .execute('RecommendBasedOnWatchlist');
+        res.json(result.recordset);
+    } catch (error) {
+        console.error('Error getting recommendations:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add endpoint for getting user's post history
+app.get('/api/posts/user/:username', async (req, res) => {
+    try {
+        const { username } = req.params;
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('username', sql.VarChar(50), username)
+            .execute('GetUserPostHistory');
+        res.json(result.recordset);
+    } catch (error) {
+        console.error('Error fetching user posts:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add endpoint for getting posts sorted by account type
+app.get('/api/posts/sorted', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .execute('GetPostsSortedByAccountType');
+        res.json(result.recordset);
+    } catch (error) {
+        console.error('Error fetching sorted posts:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add endpoint for getting post comments
+app.get('/api/posts/:postId/comments', async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { sortBy = 'recent' } = req.query;
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('postID', sql.Int, parseInt(postId))
+            .input('sortBy', sql.VarChar(20), sortBy)
+            .execute('sp_GetPostComments');
+        res.json(result.recordset);
+    } catch (error) {
+        console.error('Error fetching post comments:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add endpoint for posting a comment
+app.post('/api/posts/:postId/comments', async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { username, commentText } = req.body;
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('postID', sql.Int, parseInt(postId))
+            .input('username', sql.VarChar(50), username)
+            .input('commentText', sql.VarChar(sql.MAX), commentText)
+            .execute('sp_PostComment');
+        res.json({ commentId: result.recordset[0].CommentID });
+    } catch (error) {
+        console.error('Error posting comment:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add endpoint for deleting a comment
+app.delete('/api/comments/:commentId', async (req, res) => {
+    try {
+        const { commentId } = req.params;
+        const { username } = req.body;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('commentID', sql.Int, parseInt(commentId))
+            .input('username', sql.VarChar(50), username)
+            .execute('sp_DeleteComment');
+        res.json({ message: 'Comment deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting comment:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Get user's watchlist
+app.get('/api/watchlist/:username', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('username', sql.VarChar, req.params.username)
+            .execute('GetWatchlistForUser');
+
+        // Transform the data to match the frontend expectations
+        const watchlistItems = result.recordset.map(item => ({
+            id: parseInt(item.MovieID || item.TVShow_ID, 10), // Ensure ID is a number
+            title: item.name || item.Name,
+            type: item.Type.toLowerCase(),
+            poster: item.posters,
+            genre: item.genre,
+            rating: item.rating || 0,
+            description: item.description || '',
+            year: item.release_year || '',
+            director: item.director || ''
+        }));
+
+        res.json(watchlistItems);
+    } catch (error) {
+        console.error('Error fetching watchlist:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add delete endpoint for watchlist
+app.delete('/api/watchlist/:username/:movieId', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, req.params.username)
+            .input('movieID', sql.Int, req.params.movieId)
+            .execute('RemoveMovieFromWatchlist');
+        
+        res.status(200).json({ message: 'Movie removed from watchlist successfully' });
+    } catch (error) {
+        console.error('Error removing movie from watchlist:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add movie to watchlist
+app.post('/api/watchlist/movie', async (req, res) => {
+    try {
+        const { username, movieId } = req.body;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('movieID', sql.Int, movieId)
+            .execute('AddMovieToWatchlist');
+        res.status(200).send('Movie added to watchlist');
+    } catch (error) {
+        console.error('Error adding to watchlist:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Remove movie from watchlist
+app.delete('/api/watchlist/movie/:username/:movieId', async (req, res) => {
+    try {
+        const { username, movieId } = req.params;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('movieID', sql.Int, parseInt(movieId, 10))
+            .execute('RemoveMovieFromWatchlist');
+        res.status(200).send('Movie removed from watchlist');
+    } catch (error) {
+        console.error('Error removing from watchlist:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
 });
@@ -862,4 +1596,175 @@ app.get('/api/posts/:username/count', async (req, res) => {
       res.status(500).json({ error: 'Failed to count posts' });
     }
   });
+
+// Get user's watchlist
+app.get('/api/watchlist/:username', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('username', sql.VarChar, req.params.username)
+            .execute('GetWatchlistForUser');
+
+        // Transform the data to match the frontend expectations
+        const watchlistItems = result.recordset.map(item => ({
+            id: parseInt(item.MovieID || item.TVShow_ID, 10), // Ensure ID is a number
+            title: item.name || item.Name,
+            type: item.Type.toLowerCase(),
+            poster: item.posters,
+            genre: item.genre,
+            rating: item.rating || 0,
+            description: item.description || '',
+            year: item.release_year || '',
+            director: item.director || ''
+        }));
+
+        res.json(watchlistItems);
+    } catch (error) {
+        console.error('Error fetching watchlist:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add delete endpoint for watchlist
+app.delete('/api/watchlist/:username/:movieId', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, req.params.username)
+            .input('movieID', sql.Int, req.params.movieId)
+            .execute('RemoveMovieFromWatchlist');
+        
+        res.status(200).json({ message: 'Movie removed from watchlist successfully' });
+    } catch (error) {
+        console.error('Error removing movie from watchlist:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add movie to watchlist
+app.post('/api/watchlist/movie', async (req, res) => {
+    try {
+        const { username, movieId } = req.body;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('movieID', sql.Int, movieId)
+            .execute('AddMovieToWatchlist');
+        res.status(200).send('Movie added to watchlist');
+    } catch (error) {
+        console.error('Error adding to watchlist:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Remove movie from watchlist
+app.delete('/api/watchlist/movie/:username/:movieId', async (req, res) => {
+    try {
+        const { username, movieId } = req.params;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('movieID', sql.Int, parseInt(movieId, 10))
+            .execute('RemoveMovieFromWatchlist');
+        res.status(200).send('Movie removed from watchlist');
+    } catch (error) {
+        console.error('Error removing from watchlist:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add endpoint for getting recommendations based on watchlist
+app.get('/api/recommendations/:username', async (req, res) => {
+    try {
+        const { username } = req.params;
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('username', sql.VarChar(50), username)
+            .execute('RecommendBasedOnWatchlist');
+        res.json(result.recordset);
+    } catch (error) {
+        console.error('Error getting recommendations:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add endpoint for getting user's post history
+app.get('/api/posts/user/:username', async (req, res) => {
+    try {
+        const { username } = req.params;
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('username', sql.VarChar(50), username)
+            .execute('GetUserPostHistory');
+        res.json(result.recordset);
+    } catch (error) {
+        console.error('Error fetching user posts:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add endpoint for getting posts sorted by account type
+app.get('/api/posts/sorted', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .execute('GetPostsSortedByAccountType');
+        res.json(result.recordset);
+    } catch (error) {
+        console.error('Error fetching sorted posts:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add endpoint for getting post comments
+app.get('/api/posts/:postId/comments', async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { sortBy = 'recent' } = req.query;
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('postID', sql.Int, parseInt(postId))
+            .input('sortBy', sql.VarChar(20), sortBy)
+            .execute('sp_GetPostComments');
+        res.json(result.recordset);
+    } catch (error) {
+        console.error('Error fetching post comments:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add endpoint for posting a comment
+app.post('/api/posts/:postId/comments', async (req, res) => {
+    try {
+        const { postId } = req.params;
+        const { username, commentText } = req.body;
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('postID', sql.Int, parseInt(postId))
+            .input('username', sql.VarChar(50), username)
+            .input('commentText', sql.VarChar(sql.MAX), commentText)
+            .execute('sp_PostComment');
+        res.json({ commentId: result.recordset[0].CommentID });
+    } catch (error) {
+        console.error('Error posting comment:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add endpoint for deleting a comment
+app.delete('/api/comments/:commentId', async (req, res) => {
+    try {
+        const { commentId } = req.params;
+        const { username } = req.body;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('commentID', sql.Int, parseInt(commentId))
+            .input('username', sql.VarChar(50), username)
+            .execute('sp_DeleteComment');
+        res.json({ message: 'Comment deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting comment:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
 

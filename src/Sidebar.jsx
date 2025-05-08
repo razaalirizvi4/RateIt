@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Home, Compass, Film, Tv, ChevronDown, ChevronRight } from 'lucide-react';
+import { Home, Compass, Film, Tv, ChevronDown, ChevronRight, BookmarkPlus } from 'lucide-react';
 
 const Sidebar = ({ activeSidebarItem, setActiveSidebarItem, toggleExplore, exploreExpanded }) => {
   const navigate = useNavigate();
@@ -21,6 +21,7 @@ const Sidebar = ({ activeSidebarItem, setActiveSidebarItem, toggleExplore, explo
           <Home size={18} className="mr-3" />
           Home
         </button>
+
         <button 
           onClick={toggleExplore}
           className={`w-full flex items-center justify-between px-3 py-2 text-sm font-medium rounded-md ${
@@ -64,6 +65,20 @@ const Sidebar = ({ activeSidebarItem, setActiveSidebarItem, toggleExplore, explo
             </Link>
           </div>
         )}
+
+        {/* New Watchlist Button */}
+        <Link 
+          to="/watchlist"
+          className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
+            activeSidebarItem === 'watchlist' 
+              ? 'bg-gray-100 text-gray-900' 
+              : 'text-gray-600 hover:bg-gray-50'
+          }`}
+          onClick={() => setActiveSidebarItem('watchlist')}
+        >
+          <BookmarkPlus size={18} className="mr-3" />
+          Watchlist
+        </Link>
       </nav>
     </div>
   );
