@@ -10,25 +10,40 @@ export default function ViewProfile() {
   const [userData, setUserData] = useState(null);
   const [userPosts, setUserPosts] = useState([]);
   const [postCount, setPostCount] = useState(0);
+  const [friends, setFriends] = useState([]);
   const [selectedPost, setSelectedPost] = useState(null);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [newComment, setNewComment] = useState('');
-  
+  const [watchlistCount, setWatchlistCount] = useState(0);
+
   useEffect(() => {
-    // Get user data from localStorage
     const storedUser = localStorage.getItem('user');
     if (storedUser) {
       const user = JSON.parse(storedUser);
       setUserData(user);
       
-      // Fetch user's posts and post count
       fetchUserPosts(user.username);
       fetchPostCount(user.username);
+      fetchFriends(user.username);
+      fetchWatchlistCount(user.username); // Add this line
     } else {
-      // Redirect to login if no user is logged in
       navigate('/');
     }
   }, [navigate]);
+
+  // Add this function to fetch watchlist count
+  const fetchWatchlistCount = async (username) => {
+    try {
+      const response = await fetch(`http://localhost:3001/api/watchlist/${username}`);
+      if (response.ok) {
+        const data = await response.json();
+        setWatchlistCount(data.length); // Changed from data.count to data.length
+        console.log('Watchlist count:', data.length);
+      }
+    } catch (error) {
+      console.error('Error fetching watchlist count:', error);
+    }
+  };
 
   const fetchUserPosts = async (username) => {
     try {
@@ -52,6 +67,19 @@ export default function ViewProfile() {
       }
     } catch (error) {
       console.error('Error fetching post count:', error);
+    }
+  };
+
+  const fetchFriends = async (username) => {
+    try {
+      const response = await fetch(`http://localhost:3001/api/friends/${username}`);
+      if (response.ok) {
+        const friends = await response.json();
+        setFriends(friends);
+          console.log(friends);
+      }
+    } catch (error) {
+      console.error('Error fetching friends:', error);
     }
   };
 
@@ -255,15 +283,15 @@ export default function ViewProfile() {
                   <div className="text-sm text-gray-500">Posts</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-xl font-bold text-gray-900">{userData.stats?.followers || 0}</div>
-                  <div className="text-sm text-gray-500">Followers</div>
+                  <div className="text-xl font-bold text-gray-900">{friends.length}</div>
+                  <div className="text-sm text-gray-500">Friends</div>
                 </div>
                 <div className="text-center">
                   <div className="text-xl font-bold text-gray-900">{userData.stats?.following || 0}</div>
                   <div className="text-sm text-gray-500">Following</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-xl font-bold text-gray-900">{userData.stats?.watchlist || 0}</div>
+                  <div className="text-xl font-bold text-gray-900">{watchlistCount}</div>
                   <div className="text-sm text-gray-500">Watchlist</div>
                 </div>
               </div>
@@ -284,19 +312,6 @@ export default function ViewProfile() {
                     <div className="flex items-center">
                       <Star size={18} className="mr-2" />
                       Activity
-                    </div>
-                  </button>
-                  <button
-                    onClick={() => setActiveTab('comments')}
-                    className={`py-4 px-1 border-b-2 font-medium text-sm ${
-                      activeTab === 'comments'
-                        ? 'border-blue-500 text-blue-600'
-                        : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-                    }`}
-                  >
-                    <div className="flex items-center">
-                      <MessageSquare size={18} className="mr-2" />
-                      Comments
                     </div>
                   </button>
                 </nav>

@@ -673,6 +673,64 @@ app.delete('/api/watchlist/tvshow/:username/:tvShowId', async (req, res) => {
     }
 });
 
+// Get all users (for search)
+app.get('/api/users', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request().query('SELECT username, email, pfp, bio FROM USERS');
+        res.send(result.recordset);
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add friend endpoint
+app.post('/api/friends/add', async (req, res) => {
+    try {
+        const { username, friendUsername } = req.body;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('friendUsername', sql.VarChar, friendUsername)
+            .execute('sp_AddFriend');
+        res.status(200).send('Friend added successfully');
+    } catch (error) {
+        console.error('Error adding friend:', error);
+        res.status(500).send(error.message || 'Internal Server Error');
+    }
+});
+
+// Remove friend endpoint
+app.delete('/api/friends/remove', async (req, res) => {
+    try {
+        const { username, friendUsername } = req.body;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('friendUsername', sql.VarChar, friendUsername)
+            .execute('sp_RemoveFriend');
+        res.status(200).send('Friend removed successfully');
+    } catch (error) {
+        console.error('Error removing friend:', error);
+        res.status(500).send(error.message || 'Internal Server Error');
+    }
+});
+
+// Get friends list
+app.get('/api/friends/:username', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('username', sql.VarChar, req.params.username)
+            .execute('sp_GetFriendList');
+        res.send(result.recordset);
+    } catch (error) {
+        console.error('Error fetching friends:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
 });
@@ -1196,6 +1254,64 @@ app.delete('/api/watchlist/tvshow/:username/:tvShowId', async (req, res) => {
     } catch (error) {
         console.error('Error removing from watchlist:', error);
         res.status(500).json({ error: 'Failed to remove from watchlist' });
+    }
+});
+
+// Get all users (for search)
+app.get('/api/users', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request().query('SELECT username, email, pfp, bio FROM USERS');
+        res.send(result.recordset);
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add friend endpoint
+app.post('/api/friends/add', async (req, res) => {
+    try {
+        const { username, friendUsername } = req.body;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('friendUsername', sql.VarChar, friendUsername)
+            .execute('sp_AddFriend');
+        res.status(200).send('Friend added successfully');
+    } catch (error) {
+        console.error('Error adding friend:', error);
+        res.status(500).send(error.message || 'Internal Server Error');
+    }
+});
+
+// Remove friend endpoint
+app.delete('/api/friends/remove', async (req, res) => {
+    try {
+        const { username, friendUsername } = req.body;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('friendUsername', sql.VarChar, friendUsername)
+            .execute('sp_RemoveFriend');
+        res.status(200).send('Friend removed successfully');
+    } catch (error) {
+        console.error('Error removing friend:', error);
+        res.status(500).send(error.message || 'Internal Server Error');
+    }
+});
+
+// Get friends list
+app.get('/api/friends/:username', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('username', sql.VarChar, req.params.username)
+            .execute('sp_GetFriendList');
+        res.send(result.recordset);
+    } catch (error) {
+        console.error('Error fetching friends:', error);
+        res.status(500).send('Internal Server Error');
     }
 });
 
@@ -1781,6 +1897,64 @@ app.delete('/api/watchlist/tvshow/:username/:tvShowId', async (req, res) => {
     } catch (error) {
         console.error('Error removing from watchlist:', error);
         res.status(500).json({ error: 'Failed to remove from watchlist' });
+    }
+});
+
+// Get all users (for search)
+app.get('/api/users', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request().query('SELECT username, email, pfp, bio FROM USERS');
+        res.send(result.recordset);
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add friend endpoint
+app.post('/api/friends/add', async (req, res) => {
+    try {
+        const { username, friendUsername } = req.body;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('friendUsername', sql.VarChar, friendUsername)
+            .execute('sp_AddFriend');
+        res.status(200).send('Friend added successfully');
+    } catch (error) {
+        console.error('Error adding friend:', error);
+        res.status(500).send(error.message || 'Internal Server Error');
+    }
+});
+
+// Remove friend endpoint
+app.delete('/api/friends/remove', async (req, res) => {
+    try {
+        const { username, friendUsername } = req.body;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('friendUsername', sql.VarChar, friendUsername)
+            .execute('sp_RemoveFriend');
+        res.status(200).send('Friend removed successfully');
+    } catch (error) {
+        console.error('Error removing friend:', error);
+        res.status(500).send(error.message || 'Internal Server Error');
+    }
+});
+
+// Get friends list
+app.get('/api/friends/:username', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('username', sql.VarChar, req.params.username)
+            .execute('sp_GetFriendList');
+        res.send(result.recordset);
+    } catch (error) {
+        console.error('Error fetching friends:', error);
+        res.status(500).send('Internal Server Error');
     }
 });
 

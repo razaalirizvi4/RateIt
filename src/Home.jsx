@@ -16,21 +16,49 @@ export default function SocialFeed({ onInteract }) {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [activeSidebarItem, setActiveSidebarItem] = useState('home');
   const [posts, setPosts] = useState([]);
+  const [friends, setFriends] = useState([]);
 
-  // Fetch posts from database
+  // Fetch current user's friends
+  useEffect(() => {
+    const fetchFriends = async () => {
+      try {
+        const storedUser = localStorage.getItem('user');
+        if (!storedUser) return;
+        
+        const currentUser = JSON.parse(storedUser);
+        const response = await axios.get(`http://localhost:3001/api/friends/${currentUser.username}`);
+        setFriends(response.data.map(friend => friend.username));
+      } catch (error) {
+        console.error('Error fetching friends:', error);
+      }
+    };
+    fetchFriends();
+  }, []);
+
+  // Fetch posts from database and filter by friends
   useEffect(() => {
     const fetchPosts = async () => {
       try {
         const response = await axios.get('http://localhost:3001/api/posts');
-        console.log('Raw post data:', response.data); // Add this line
-        setPosts(response.data);
+        const storedUser = localStorage.getItem('user');
+        
+        if (storedUser) {
+          const currentUser = JSON.parse(storedUser);
+          // Filter posts to only show from friends or the current user
+          const filtered = response.data.filter(post => 
+            friends.includes(post.username) || post.username === currentUser.username
+          );
+          setPosts(filtered);
+        } else {
+          setPosts([]);
+        }
       } catch (error) {
         console.error('Error fetching posts:', error);
       }
     };
 
     fetchPosts();
-  }, []);
+  }, [friends]);
 
   // CreatePostButton
   const handlePostCreated = async (newPost) => {
