@@ -41,11 +41,29 @@ export default function TvShowBrowser() {
     setSelectedTvShow(null);
   };
 
-  const addToWatchlist = (e, tvShow) => {
+  const addToWatchlist = async (e, tvShow) => {
     e.stopPropagation(); 
-    console.log(`Added ${tvShow.name} to watchlist`);
-    alert(`Added ${tvShow.name} to watchlist`);
-  };
+    try {
+        // Get the current user from localStorage and parse it
+        const storedUser = localStorage.getItem('user');
+        if (!storedUser) {
+            alert('Please log in to add TV shows to your watchlist');
+            return;
+        }
+
+        const user = JSON.parse(storedUser); // Parse the stored user string into an object
+        
+        await axios.post('http://localhost:3001/api/watchlist/add', {
+            username: user.username, // Now correctly accessing username from parsed object
+            tvShowID: tvShow.TVShow_ID
+        });
+
+        alert(`Added ${tvShow.Name} to watchlist`);
+    } catch (error) {
+        console.error('Error adding to watchlist:', error);
+        alert('Failed to add TV show to watchlist');
+    }
+};
 
   const filteredTvShows = tvShows.filter(tvShow => 
     (tvShow.Name && tvShow.Name.toLowerCase().includes(searchQuery.toLowerCase())) ||

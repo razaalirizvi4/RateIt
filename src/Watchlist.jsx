@@ -115,12 +115,13 @@ export default function Watchlist() {
                   <div className="p-4">
                     <div className="flex items-center space-x-2 mb-1">
                       {item.type === 'movie' ? <Film size={16} /> : <Tv size={16} />}
-                      <h3 className="text-lg font-medium text-gray-900">{item.title}</h3>
+                      <h3 className="text-lg font-medium text-gray-900">{item.title || item.Name}</h3>
                     </div>
-                    <p className="text-gray-600 text-sm mb-2">{item.genre}</p>
+                    <p className="text-gray-600 text-sm mb-2">{item.genre || item.Genre}</p>
+                    <p className="text-gray-500 text-sm mb-2 line-clamp-2">{item.description || item.Description}</p>
                     <div className="flex items-center space-x-1">
                       <Star size={16} className="text-yellow-400 fill-current" />
-                      <span className="text-gray-900">{item.rating}</span>
+                      <span className="text-gray-900">{item.rating || item.Rating}</span>
                     </div>
                   </div>
                 </div>

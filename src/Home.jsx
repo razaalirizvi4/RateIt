@@ -34,45 +34,45 @@ export default function SocialFeed({ onInteract }) {
 
   // CreatePostButton
   const handlePostCreated = async (newPost) => {
-    try {
-      const storedUser = localStorage.getItem('user');
-      if (!storedUser) {
-        onInteract(); // Trigger login popup
-        return;
-      }
+    // try {
+    //   const storedUser = localStorage.getItem('user');
+    //   if (!storedUser) {
+    //     onInteract(); // Trigger login popup
+    //     return;
+    //   }
 
-      const user = JSON.parse(storedUser);
+    //   const user = JSON.parse(storedUser);
       
-      // Structure the post data according to the table schema
-      const postData = {
-        username: user.username,
-        contentText: newPost.content,
-        media: null,
-        pollID: null,
-        movieID: null,
-        tvShowID: null,
-        tags: newPost.tags || null,
-        title: newPost.title // Fixed: Access title directly from newPost
-      };
+    //   // Structure the post data according to the table schema
+    //   const postData = {
+    //     username: user.username,
+    //     contentText: newPost.content,
+    //     media: null,
+    //     pollID: null,
+    //     movieID: null,
+    //     tvShowID: null,
+    //     tags: newPost.tags || null,
+    //     title: newPost.title // Fixed: Access title directly from newPost
+    //   };
 
-      const response = await axios.post('http://localhost:3001/api/posts', postData);
+    //   //const response = await axios.post('http://localhost:3001/api/posts', postData);
       
-      // Construct the new post object for UI
-      const newPostForUI = {
-        ...postData,
-        postID: response.data.postId, // or response.data.postID depending on backend
-        upvoteCount: 0,
-        commentCount: 0,
-        dateOfPost: new Date().toISOString(),
-        pfp: user.pfp || null,
-        userVote: null,
-        comments: []
-      };
+    //   // Construct the new post object for UI
+    //   const newPostForUI = {
+    //     ...postData,
+    //     postID: response.data.postId, // or response.data.postID depending on backend
+    //     upvoteCount: 0,
+    //     commentCount: 0,
+    //     dateOfPost: new Date().toISOString(),
+    //     pfp: user.pfp || null,
+    //     userVote: null,
+    //     comments: []
+    //   };
 
-      setPosts(prevPosts => [newPostForUI, ...prevPosts]);
-    } catch (error) {
-      console.error('Error creating post:', error);
-    }
+    //   setPosts(prevPosts => [newPostForUI, ...prevPosts]);
+    // } catch (error) {
+    //   console.error('Error creating post:', error);
+    // }
   };
 
   const toggleExplore = () => {

@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { X, Plus, Upload, Link as LinkIcon, BarChart } from 'lucide-react';
+import { X, Plus, Upload, Link as LinkIcon, BarChart, Search } from 'lucide-react';
+import axios from 'axios';
 
 // CreatePostButton component that can be reused
 export function CreatePostButton({ onPostCreated, currentUser = { name: "You", avatar: "./images/pfp2.jpg" } }) {
@@ -62,81 +63,100 @@ export function CreatePostButton({ onPostCreated, currentUser = { name: "You", a
     }, 150);
   };
 
+  // New state for movies and TV shows
+  const [movies, setMovies] = useState([]);
+  const [tvShows, setTvShows] = useState([]);
+  const [selectedMovie, setSelectedMovie] = useState('');
+  const [selectedTvShow, setSelectedTvShow] = useState('');
+  const [searchMovieQuery, setSearchMovieQuery] = useState('');
+  const [searchTvShowQuery, setSearchTvShowQuery] = useState('');
+
+  // Fetch movies and TV shows
+  useEffect(() => {
+    const fetchContent = async () => {
+      try {
+        const [moviesRes, tvShowsRes] = await Promise.all([
+          axios.get('http://localhost:3001/api/movies'),
+          axios.get('http://localhost:3001/api/tvshows')
+        ]);
+        setMovies(moviesRes.data);
+        setTvShows(tvShowsRes.data);
+      } catch (error) {
+        console.error('Error fetching content:', error);
+      }
+    };
+    fetchContent();
+  }, []);
+
+  // Filter movies and TV shows based on search
+  const filteredMovies = movies.filter(movie => 
+    movie.name.toLowerCase().includes(searchMovieQuery.toLowerCase())
+  );
+
+  const filteredTvShows = tvShows.filter(show => 
+    show.Name.toLowerCase().includes(searchTvShowQuery.toLowerCase())
+  );
+
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    // Generate a unique ID for the new post
-    const postId = Date.now();
-    
-    // Create the base post object
-    const newPost = {
-      id: postId,
-      author: currentUser.name,
-      authorAvatar: currentUser.avatar,
-      title,
-      timestamp: new Date().toISOString(), // Use actual timestamp for sorting
-      displayTime: "Just now",
-      upvotes: 0,
-      downvotes: 0,
-      userVote: null,
-      comments: [],
-      tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag !== '')
+    const storedUser = JSON.parse(localStorage.getItem('user'));
+    if (!storedUser || !storedUser.username) {
+        console.error('No user data found');
+        return;
+    }
+
+    // Structure the post data according to the API requirements
+    const postData = {
+        username: storedUser.username,
+        title: title,
+        contentText: content,
+        media: null,
+        pollID: null,
+        movieId: selectedMovie || null,
+        tvShowId: selectedTvShow || null,
+        tags: tags
     };
-    
-    // Add type-specific content
-    switch (activeTab) {
-      case 'text':
-        newPost.type = 'text';
-        newPost.content = content;
-        break;
-      case 'media':
-        newPost.type = 'media';
-        newPost.content = "Shared media";
-        // Create object URLs for uploaded files or use placeholders
-        newPost.image = mediaFiles.length > 0 
-          ? URL.createObjectURL(mediaFiles[0]) 
-          : "/api/placeholder/500/300";
-        break;
-      case 'link':
-        newPost.type = 'link';
-        newPost.content = "Shared link: " + linkUrl;
-        newPost.linkUrl = linkUrl;
-        break;
-      case 'poll':
-        newPost.type = 'poll';
-        // Filter out empty options
-        const validOptions = pollOptions.filter(option => option.trim() !== '');
-        newPost.content = "Created a poll";
-        newPost.isPoll = true;
-        newPost.pollOptions = validOptions.map(option => ({
-          text: option,
-          votes: 0
-        }));
-        newPost.pollDuration = pollDuration;
-        newPost.pollTotalVotes = 0;
-        newPost.userVoted = false;
-        break;
-    }
-    
-    // Pass the new post to the parent component
-    if (onPostCreated) {
-      onPostCreated(newPost);
-    } else {
-      console.warn("onPostCreated prop is not provided to CreatePostButton component");
-    }
-    
-    // Reset form fields
-    setTitle('');
-    setContent('');
-    setLinkUrl('');
-    setTags('');
-    setMediaFiles([]);
-    setPollOptions(['', '']);
-    setPollDuration('1 day');
-    
-    // Close the modal with animation
-    closeModal();
-  };
+
+    // Send to API
+    axios.post('http://localhost:3001/api/posts', postData)
+        .then(response => {
+            console.log('Post created:', response.data);
+            // Only call onPostCreated with the response data
+            if (onPostCreated) {
+                const newPost = {
+                    postID: response.data.postId,
+                    author: storedUser.username,
+                    authorAvatar: storedUser.pfp,
+                    title,
+                    timestamp: new Date().toISOString(),
+                    displayTime: "Just now",
+                    upvoteCount: 0,
+                    commentCount: 0,
+                    dateOfPost: new Date().toISOString(),
+                    userVote: null,
+                    comments: [],
+                    tags: tags.split(',').map(tag => tag.trim()).filter(tag => tag !== ''),
+                    movieID: selectedMovie || null,
+                    tvShowID: selectedTvShow || null,
+                    content: content,
+                    pfp: storedUser.pfp || null
+                };
+                onPostCreated(newPost);
+            }
+            // Reset form and close modal
+            setTitle('');
+            setContent('');
+            setTags('');
+            setSelectedMovie('');
+            setSelectedTvShow('');
+            closeModal();
+        })
+        .catch(error => {
+            console.error('Error creating post:', error);
+            alert('Error creating post: ' + (error.response?.data?.message || error.message));
+        });
+};
   
   const handleMediaUpload = (e) => {
     if (e.target.files && e.target.files.length > 0) {
@@ -233,6 +253,26 @@ export function CreatePostButton({ onPostCreated, currentUser = { name: "You", a
                 }`}
               >
                 Link
+              </button>
+              <button 
+                onClick={() => handleTabChange('movies')} 
+                className={`px-4 py-2 text-center flex-1 transition-all duration-300 ${
+                  activeTab === 'movies' 
+                    ? 'text-blue-500 border-b-2 border-blue-500' 
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                Movies
+              </button>
+              <button 
+                onClick={() => handleTabChange('tvshows')} 
+                className={`px-4 py-2 text-center flex-1 transition-all duration-300 ${
+                  activeTab === 'tvshows' 
+                    ? 'text-blue-500 border-b-2 border-blue-500' 
+                    : 'text-gray-500 hover:text-gray-700'
+                }`}
+              >
+                TV Shows
               </button>
               <button 
                 onClick={() => handleTabChange('poll')} 
@@ -338,6 +378,88 @@ export function CreatePostButton({ onPostCreated, currentUser = { name: "You", a
                     </div>
                   </div>
                 )}
+
+                {/* Movies Tab Content */}
+{activeTab === 'movies' && (
+  <div className="mb-4">
+    <div className="relative mb-4">
+      <input
+        type="text"
+        placeholder="Search movies..."
+        value={searchMovieQuery}
+        onChange={(e) => setSearchMovieQuery(e.target.value)}
+        className="w-full bg-white border border-gray-200 rounded-md p-2 pl-9 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-200"
+      />
+      <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+    </div>
+    <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-md">
+      {filteredMovies.map(movie => (
+        <button
+          type="button" // Add type="button" to prevent form submission
+          key={movie.id}
+          onClick={() => {
+            setSelectedMovie(movie.id === selectedMovie ? '' : movie.id); // Toggle selection
+            setSearchMovieQuery(movie.name); // Fill search with selected movie name
+          }}
+          className={`w-full text-left p-3 flex items-center hover:bg-gray-50 ${
+            selectedMovie === movie.id ? 'bg-blue-50' : ''
+          }`}
+        >
+          <img
+            src={movie.posters}
+            alt={movie.name}
+            className="w-12 h-16 object-cover rounded mr-3"
+          />
+          <div>
+            <h4 className="font-medium text-gray-900">{movie.name}</h4>
+            <p className="text-sm text-gray-500">{movie.release_year} • {movie.genre}</p>
+          </div>
+        </button>
+      ))}
+    </div>
+  </div>
+)}
+
+{/* TV Shows Tab Content */}
+{activeTab === 'tvshows' && (
+  <div className="mb-4">
+    <div className="relative mb-4">
+      <input
+        type="text"
+        placeholder="Search TV shows..."
+        value={searchTvShowQuery}
+        onChange={(e) => setSearchTvShowQuery(e.target.value)}
+        className="w-full bg-white border border-gray-200 rounded-md p-2 pl-9 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-200"
+      />
+      <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+    </div>
+    <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-md">
+      {filteredTvShows.map(show => (
+        <button
+          type="button" // Add type="button" to prevent form submission
+          key={show.TVShow_ID}
+          onClick={() => {
+            setSelectedTvShow(show.TVShow_ID === selectedTvShow ? '' : show.TVShow_ID); // Toggle selection
+            setSearchTvShowQuery(show.Name); // Fill search with selected show name
+          }}
+          className={`w-full text-left p-3 flex items-center hover:bg-gray-50 ${
+            selectedTvShow === show.TVShow_ID ? 'bg-blue-50' : ''
+          }`}
+        >
+          <img
+            src={show.Posters}
+            alt={show.Name}
+            className="w-12 h-16 object-cover rounded mr-3"
+          />
+          <div>
+            <h4 className="font-medium text-gray-900">{show.Name}</h4>
+            <p className="text-sm text-gray-500">{show.Seasons} Seasons • {show.Genre}</p>
+          </div>
+        </button>
+      ))}
+    </div>
+  </div>
+)}
 
                 {/* Poll Tab Content */}
                 {activeTab === 'poll' && (
