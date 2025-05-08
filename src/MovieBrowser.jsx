@@ -49,11 +49,27 @@ export default function MovieBrowser() {
     setSearchQuery(e.target.value);
   };
 
-  const addToWatchlist = (e, movie) => {
+  const addToWatchlist = async (e, movie) => {
     e.stopPropagation(); 
-    console.log(`Added ${movie.name} to watchlist`);
-    alert(`Added ${movie.name} to watchlist`);
-  };
+    try {
+        // Get the current user from localStorage or your auth system
+        const username = localStorage.getItem('user'); // Adjust based on your auth implementation
+        if (!username) {
+            alert('Please log in to add movies to your watchlist');
+            return;
+        }
+
+        await axios.post('http://localhost:3001/api/watchlist/add', {
+            username: username,
+            movieID: movie.id
+        });
+
+        alert(`Added ${movie.name} to watchlist`);
+    } catch (error) {
+        console.error('Error adding to watchlist:', error);
+        alert('Failed to add movie to watchlist');
+    }
+};
 
   const toggleProfileDropdown = () => {
     setProfileDropdownOpen(!profileDropdownOpen);
