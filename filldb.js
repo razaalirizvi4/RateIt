@@ -382,7 +382,7 @@ app.get('/api/watchlist/:username', async (req, res) => {
         const pool = await sql.connect(dbConfig);
         const result = await pool.request()
             .input('username', sql.VarChar, req.params.username)
-            .execute('GetWatchlistForUser');
+            .execute('GetWatchlistForUser3');
 
         // Transform the data to match the frontend expectations
         const watchlistItems = result.recordset.map(item => ({
@@ -425,14 +425,36 @@ app.delete('/api/watchlist/movie/:username/:movieId', async (req, res) => {
     try {
         const { username, movieId } = req.params;
         const pool = await sql.connect(dbConfig);
+
         await pool.request()
             .input('username', sql.VarChar, username)
-            .input('movieID', sql.Int, parseInt(movieId, 10))
+            .input('movieID', sql.Int, movieId)
             .execute('RemoveMovieFromWatchlist');
-        res.status(200).send('Movie removed from watchlist');
+
+        res.json({ message: 'Removed from watchlist successfully' });
     } catch (error) {
         console.error('Error removing from watchlist:', error);
-        res.status(500).send('Internal Server Error');
+        res.status(500).json({ error: 'Failed to remove from watchlist' });
+    }
+});
+
+app.delete('/api/watchlist/tvshow/:username/:tvShowId', async (req, res) => {
+    try {
+        const { username, tvShowId } = req.params;
+        const pool = await sql.connect(dbConfig);
+
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('tvShowID', sql.Int, tvShowId)
+            .query(`
+                DELETE FROM WATCHLIST
+                WHERE username = @username AND tvID = @tvShowID
+            `);
+
+        res.json({ message: 'Removed from watchlist successfully' });
+    } catch (error) {
+        console.error('Error removing from watchlist:', error);
+        res.status(500).json({ error: 'Failed to remove from watchlist' });
     }
 });
 
@@ -531,31 +553,53 @@ app.delete('/api/comments/:commentId', async (req, res) => {
     }
 });
 
-// Get user's watchlist
+// Add watchlist endpoints
+app.post('/api/watchlist/add', async (req, res) => {
+    try {
+        const { username, movieID, tvShowID } = req.body;
+        const pool = await sql.connect(dbConfig);
+
+        if (movieID) {
+            // Call stored procedure for adding movie to watchlist
+            await pool.request()
+                .input('username', sql.VarChar, username)
+                .input('movieID', sql.Int, movieID)
+                .query(`
+                    INSERT INTO WATCHLIST (username, movieID, tvID)
+                    VALUES (@username, @movieID, NULL)
+                    `);
+        } else if (tvShowID) {
+            // Add TV show to watchlist
+            await pool.request()
+                .input('username', sql.VarChar, username)
+                .input('tvShowID', sql.Int, tvShowID)
+                .query(`
+                    INSERT INTO WATCHLIST (username, movieID, tvID)
+                    VALUES (@username, NULL, @tvShowID)
+                `);
+        }
+
+        res.json({ message: 'Added to watchlist successfully' });
+    } catch (error) {
+        console.error('Error adding to watchlist:', error);
+        res.status(500).json({ error: 'Failed to add to watchlist' });
+    }
+});
+
 app.get('/api/watchlist/:username', async (req, res) => {
     try {
+        const { username } = req.params;
         const pool = await sql.connect(dbConfig);
+
+        // Get both movies and TV shows from watchlist
         const result = await pool.request()
-            .input('username', sql.VarChar, req.params.username)
+            .input('username', sql.VarChar, username)
             .execute('GetWatchlistForUser');
 
-        // Transform the data to match the frontend expectations
-        const watchlistItems = result.recordset.map(item => ({
-            id: parseInt(item.MovieID || item.TVShow_ID, 10), // Ensure ID is a number
-            title: item.name || item.Name,
-            type: item.Type.toLowerCase(),
-            poster: item.posters,
-            genre: item.genre,
-            rating: item.rating || 0,
-            description: item.description || '',
-            year: item.release_year || '',
-            director: item.director || ''
-        }));
-
-        res.json(watchlistItems);
+        res.json(result.recordset);
     } catch (error) {
         console.error('Error fetching watchlist:', error);
-        res.status(500).send('Internal Server Error');
+        res.status(500).json({ error: 'Failed to fetch watchlist' });
     }
 });
 
@@ -596,13 +640,93 @@ app.delete('/api/watchlist/movie/:username/:movieId', async (req, res) => {
     try {
         const { username, movieId } = req.params;
         const pool = await sql.connect(dbConfig);
+
         await pool.request()
             .input('username', sql.VarChar, username)
-            .input('movieID', sql.Int, parseInt(movieId, 10))
+            .input('movieID', sql.Int, movieId)
             .execute('RemoveMovieFromWatchlist');
-        res.status(200).send('Movie removed from watchlist');
+
+        res.json({ message: 'Removed from watchlist successfully' });
     } catch (error) {
         console.error('Error removing from watchlist:', error);
+        res.status(500).json({ error: 'Failed to remove from watchlist' });
+    }
+});
+
+app.delete('/api/watchlist/tvshow/:username/:tvShowId', async (req, res) => {
+    try {
+        const { username, tvShowId } = req.params;
+        const pool = await sql.connect(dbConfig);
+
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('tvShowID', sql.Int, tvShowId)
+            .query(`
+                DELETE FROM WATCHLIST
+                WHERE username = @username AND tvID = @tvShowID
+            `);
+
+        res.json({ message: 'Removed from watchlist successfully' });
+    } catch (error) {
+        console.error('Error removing from watchlist:', error);
+        res.status(500).json({ error: 'Failed to remove from watchlist' });
+    }
+});
+
+// Get all users (for search)
+app.get('/api/users', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request().query('SELECT username, email, pfp, bio FROM USERS');
+        res.send(result.recordset);
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add friend endpoint
+app.post('/api/friends/add', async (req, res) => {
+    try {
+        const { username, friendUsername } = req.body;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('friendUsername', sql.VarChar, friendUsername)
+            .execute('sp_AddFriend');
+        res.status(200).send('Friend added successfully');
+    } catch (error) {
+        console.error('Error adding friend:', error);
+        res.status(500).send(error.message || 'Internal Server Error');
+    }
+});
+
+// Remove friend endpoint
+app.delete('/api/friends/remove', async (req, res) => {
+    try {
+        const { username, friendUsername } = req.body;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('friendUsername', sql.VarChar, friendUsername)
+            .execute('sp_RemoveFriend');
+        res.status(200).send('Friend removed successfully');
+    } catch (error) {
+        console.error('Error removing friend:', error);
+        res.status(500).send(error.message || 'Internal Server Error');
+    }
+});
+
+// Get friends list
+app.get('/api/friends/:username', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('username', sql.VarChar, req.params.username)
+            .execute('sp_GetFriendList');
+        res.send(result.recordset);
+    } catch (error) {
+        console.error('Error fetching friends:', error);
         res.status(500).send('Internal Server Error');
     }
 });
@@ -804,31 +928,50 @@ app.post('/api/login', async (req, res) => {
     }
 });
 
-// Get user's watchlist
+// Add watchlist endpoints
+app.post('/api/watchlist/add', async (req, res) => {
+    try {
+        const { username, movieID, tvShowID } = req.body;
+        const pool = await sql.connect(dbConfig);
+
+        if (movieID) {
+            // Call stored procedure for adding movie to watchlist
+            await pool.request()
+                .input('username', sql.VarChar, username)
+                .input('movieID', sql.Int, movieID)
+                .execute('AddMovieToWatchlist');
+        } else if (tvShowID) {
+            // Add TV show to watchlist
+            await pool.request()
+                .input('username', sql.VarChar, username)
+                .input('tvShowID', sql.Int, tvShowID)
+                .query(`
+                    INSERT INTO WATCHLIST (username, movieID, tvID)
+                    VALUES (@username, NULL, @tvShowID)
+                `);
+        }
+
+        res.json({ message: 'Added to watchlist successfully' });
+    } catch (error) {
+        console.error('Error adding to watchlist:', error);
+        res.status(500).json({ error: 'Failed to add to watchlist' });
+    }
+});
+
 app.get('/api/watchlist/:username', async (req, res) => {
     try {
+        const { username } = req.params;
         const pool = await sql.connect(dbConfig);
+
+        // Get both movies and TV shows from watchlist
         const result = await pool.request()
-            .input('username', sql.VarChar, req.params.username)
+            .input('username', sql.VarChar, username)
             .execute('GetWatchlistForUser');
 
-        // Transform the data to match the frontend expectations
-        const watchlistItems = result.recordset.map(item => ({
-            id: parseInt(item.MovieID || item.TVShow_ID, 10), // Ensure ID is a number
-            title: item.name || item.Name,
-            type: item.Type.toLowerCase(),
-            poster: item.posters,
-            genre: item.genre,
-            rating: item.rating || 0,
-            description: item.description || '',
-            year: item.release_year || '',
-            director: item.director || ''
-        }));
-
-        res.json(watchlistItems);
+        res.json(result.recordset);
     } catch (error) {
         console.error('Error fetching watchlist:', error);
-        res.status(500).send('Internal Server Error');
+        res.status(500).json({ error: 'Failed to fetch watchlist' });
     }
 });
 
@@ -869,14 +1012,36 @@ app.delete('/api/watchlist/movie/:username/:movieId', async (req, res) => {
     try {
         const { username, movieId } = req.params;
         const pool = await sql.connect(dbConfig);
+
         await pool.request()
             .input('username', sql.VarChar, username)
-            .input('movieID', sql.Int, parseInt(movieId, 10))
+            .input('movieID', sql.Int, movieId)
             .execute('RemoveMovieFromWatchlist');
-        res.status(200).send('Movie removed from watchlist');
+
+        res.json({ message: 'Removed from watchlist successfully' });
     } catch (error) {
         console.error('Error removing from watchlist:', error);
-        res.status(500).send('Internal Server Error');
+        res.status(500).json({ error: 'Failed to remove from watchlist' });
+    }
+});
+
+app.delete('/api/watchlist/tvshow/:username/:tvShowId', async (req, res) => {
+    try {
+        const { username, tvShowId } = req.params;
+        const pool = await sql.connect(dbConfig);
+
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('tvShowID', sql.Int, tvShowId)
+            .query(`
+                DELETE FROM WATCHLIST
+                WHERE username = @username AND tvID = @tvShowID
+            `);
+
+        res.json({ message: 'Removed from watchlist successfully' });
+    } catch (error) {
+        console.error('Error removing from watchlist:', error);
+        res.status(500).json({ error: 'Failed to remove from watchlist' });
     }
 });
 
@@ -975,31 +1140,50 @@ app.delete('/api/comments/:commentId', async (req, res) => {
     }
 });
 
-// Get user's watchlist
+// Add watchlist endpoints
+app.post('/api/watchlist/add', async (req, res) => {
+    try {
+        const { username, movieID, tvShowID } = req.body;
+        const pool = await sql.connect(dbConfig);
+
+        if (movieID) {
+            // Call stored procedure for adding movie to watchlist
+            await pool.request()
+                .input('username', sql.VarChar, username)
+                .input('movieID', sql.Int, movieID)
+                .execute('AddMovieToWatchlist');
+        } else if (tvShowID) {
+            // Add TV show to watchlist
+            await pool.request()
+                .input('username', sql.VarChar, username)
+                .input('tvShowID', sql.Int, tvShowID)
+                .query(`
+                    INSERT INTO WATCHLIST (username, movieID, tvID)
+                    VALUES (@username, NULL, @tvShowID)
+                `);
+        }
+
+        res.json({ message: 'Added to watchlist successfully' });
+    } catch (error) {
+        console.error('Error adding to watchlist:', error);
+        res.status(500).json({ error: 'Failed to add to watchlist' });
+    }
+});
+
 app.get('/api/watchlist/:username', async (req, res) => {
     try {
+        const { username } = req.params;
         const pool = await sql.connect(dbConfig);
+
+        // Get both movies and TV shows from watchlist
         const result = await pool.request()
-            .input('username', sql.VarChar, req.params.username)
+            .input('username', sql.VarChar, username)
             .execute('GetWatchlistForUser');
 
-        // Transform the data to match the frontend expectations
-        const watchlistItems = result.recordset.map(item => ({
-            id: parseInt(item.MovieID || item.TVShow_ID, 10), // Ensure ID is a number
-            title: item.name || item.Name,
-            type: item.Type.toLowerCase(),
-            poster: item.posters,
-            genre: item.genre,
-            rating: item.rating || 0,
-            description: item.description || '',
-            year: item.release_year || '',
-            director: item.director || ''
-        }));
-
-        res.json(watchlistItems);
+        res.json(result.recordset);
     } catch (error) {
         console.error('Error fetching watchlist:', error);
-        res.status(500).send('Internal Server Error');
+        res.status(500).json({ error: 'Failed to fetch watchlist' });
     }
 });
 
@@ -1040,13 +1224,93 @@ app.delete('/api/watchlist/movie/:username/:movieId', async (req, res) => {
     try {
         const { username, movieId } = req.params;
         const pool = await sql.connect(dbConfig);
+
         await pool.request()
             .input('username', sql.VarChar, username)
-            .input('movieID', sql.Int, parseInt(movieId, 10))
+            .input('movieID', sql.Int, movieId)
             .execute('RemoveMovieFromWatchlist');
-        res.status(200).send('Movie removed from watchlist');
+
+        res.json({ message: 'Removed from watchlist successfully' });
     } catch (error) {
         console.error('Error removing from watchlist:', error);
+        res.status(500).json({ error: 'Failed to remove from watchlist' });
+    }
+});
+
+app.delete('/api/watchlist/tvshow/:username/:tvShowId', async (req, res) => {
+    try {
+        const { username, tvShowId } = req.params;
+        const pool = await sql.connect(dbConfig);
+
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('tvShowID', sql.Int, tvShowId)
+            .query(`
+                DELETE FROM WATCHLIST
+                WHERE username = @username AND tvID = @tvShowID
+            `);
+
+        res.json({ message: 'Removed from watchlist successfully' });
+    } catch (error) {
+        console.error('Error removing from watchlist:', error);
+        res.status(500).json({ error: 'Failed to remove from watchlist' });
+    }
+});
+
+// Get all users (for search)
+app.get('/api/users', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request().query('SELECT username, email, pfp, bio FROM USERS');
+        res.send(result.recordset);
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add friend endpoint
+app.post('/api/friends/add', async (req, res) => {
+    try {
+        const { username, friendUsername } = req.body;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('friendUsername', sql.VarChar, friendUsername)
+            .execute('sp_AddFriend');
+        res.status(200).send('Friend added successfully');
+    } catch (error) {
+        console.error('Error adding friend:', error);
+        res.status(500).send(error.message || 'Internal Server Error');
+    }
+});
+
+// Remove friend endpoint
+app.delete('/api/friends/remove', async (req, res) => {
+    try {
+        const { username, friendUsername } = req.body;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('friendUsername', sql.VarChar, friendUsername)
+            .execute('sp_RemoveFriend');
+        res.status(200).send('Friend removed successfully');
+    } catch (error) {
+        console.error('Error removing friend:', error);
+        res.status(500).send(error.message || 'Internal Server Error');
+    }
+});
+
+// Get friends list
+app.get('/api/friends/:username', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('username', sql.VarChar, req.params.username)
+            .execute('sp_GetFriendList');
+        res.send(result.recordset);
+    } catch (error) {
+        console.error('Error fetching friends:', error);
         res.status(500).send('Internal Server Error');
     }
 });
@@ -1307,31 +1571,50 @@ app.get('/api/posts/:postId/comments', async (req, res) => {
     }
   });
 
-// Get user's watchlist
+// Add watchlist endpoints
+app.post('/api/watchlist/add', async (req, res) => {
+    try {
+        const { username, movieID, tvShowID } = req.body;
+        const pool = await sql.connect(dbConfig);
+
+        if (movieID) {
+            // Call stored procedure for adding movie to watchlist
+            await pool.request()
+                .input('username', sql.VarChar, username)
+                .input('movieID', sql.Int, movieID)
+                .execute('AddMovieToWatchlist');
+        } else if (tvShowID) {
+            // Add TV show to watchlist
+            await pool.request()
+                .input('username', sql.VarChar, username)
+                .input('tvShowID', sql.Int, tvShowID)
+                .query(`
+                    INSERT INTO WATCHLIST (username, movieID, tvID)
+                    VALUES (@username, NULL, @tvShowID)
+                `);
+        }
+
+        res.json({ message: 'Added to watchlist successfully' });
+    } catch (error) {
+        console.error('Error adding to watchlist:', error);
+        res.status(500).json({ error: 'Failed to add to watchlist' });
+    }
+});
+
 app.get('/api/watchlist/:username', async (req, res) => {
     try {
+        const { username } = req.params;
         const pool = await sql.connect(dbConfig);
+
+        // Get both movies and TV shows from watchlist
         const result = await pool.request()
-            .input('username', sql.VarChar, req.params.username)
+            .input('username', sql.VarChar, username)
             .execute('GetWatchlistForUser');
 
-        // Transform the data to match the frontend expectations
-        const watchlistItems = result.recordset.map(item => ({
-            id: parseInt(item.MovieID || item.TVShow_ID, 10), // Ensure ID is a number
-            title: item.name || item.Name,
-            type: item.Type.toLowerCase(),
-            poster: item.posters,
-            genre: item.genre,
-            rating: item.rating || 0,
-            description: item.description || '',
-            year: item.release_year || '',
-            director: item.director || ''
-        }));
-
-        res.json(watchlistItems);
+        res.json(result.recordset);
     } catch (error) {
         console.error('Error fetching watchlist:', error);
-        res.status(500).send('Internal Server Error');
+        res.status(500).json({ error: 'Failed to fetch watchlist' });
     }
 });
 
@@ -1372,14 +1655,36 @@ app.delete('/api/watchlist/movie/:username/:movieId', async (req, res) => {
     try {
         const { username, movieId } = req.params;
         const pool = await sql.connect(dbConfig);
+
         await pool.request()
             .input('username', sql.VarChar, username)
-            .input('movieID', sql.Int, parseInt(movieId, 10))
+            .input('movieID', sql.Int, movieId)
             .execute('RemoveMovieFromWatchlist');
-        res.status(200).send('Movie removed from watchlist');
+
+        res.json({ message: 'Removed from watchlist successfully' });
     } catch (error) {
         console.error('Error removing from watchlist:', error);
-        res.status(500).send('Internal Server Error');
+        res.status(500).json({ error: 'Failed to remove from watchlist' });
+    }
+});
+
+app.delete('/api/watchlist/tvshow/:username/:tvShowId', async (req, res) => {
+    try {
+        const { username, tvShowId } = req.params;
+        const pool = await sql.connect(dbConfig);
+
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('tvShowID', sql.Int, tvShowId)
+            .query(`
+                DELETE FROM WATCHLIST
+                WHERE username = @username AND tvID = @tvShowID
+            `);
+
+        res.json({ message: 'Removed from watchlist successfully' });
+    } catch (error) {
+        console.error('Error removing from watchlist:', error);
+        res.status(500).json({ error: 'Failed to remove from watchlist' });
     }
 });
 
@@ -1478,31 +1783,50 @@ app.delete('/api/comments/:commentId', async (req, res) => {
     }
 });
 
-// Get user's watchlist
+// Add watchlist endpoints
+app.post('/api/watchlist/add', async (req, res) => {
+    try {
+        const { username, movieID, tvShowID } = req.body;
+        const pool = await sql.connect(dbConfig);
+
+        if (movieID) {
+            // Call stored procedure for adding movie to watchlist
+            await pool.request()
+                .input('username', sql.VarChar, username)
+                .input('movieID', sql.Int, movieID)
+                .execute('AddMovieToWatchlist');
+        } else if (tvShowID) {
+            // Add TV show to watchlist
+            await pool.request()
+                .input('username', sql.VarChar, username)
+                .input('tvShowID', sql.Int, tvShowID)
+                .query(`
+                    INSERT INTO WATCHLIST (username, movieID, tvID)
+                    VALUES (@username, NULL, @tvShowID)
+                `);
+        }
+
+        res.json({ message: 'Added to watchlist successfully' });
+    } catch (error) {
+        console.error('Error adding to watchlist:', error);
+        res.status(500).json({ error: 'Failed to add to watchlist' });
+    }
+});
+
 app.get('/api/watchlist/:username', async (req, res) => {
     try {
+        const { username } = req.params;
         const pool = await sql.connect(dbConfig);
+
+        // Get both movies and TV shows from watchlist
         const result = await pool.request()
-            .input('username', sql.VarChar, req.params.username)
+            .input('username', sql.VarChar, username)
             .execute('GetWatchlistForUser');
 
-        // Transform the data to match the frontend expectations
-        const watchlistItems = result.recordset.map(item => ({
-            id: parseInt(item.MovieID || item.TVShow_ID, 10), // Ensure ID is a number
-            title: item.name || item.Name,
-            type: item.Type.toLowerCase(),
-            poster: item.posters,
-            genre: item.genre,
-            rating: item.rating || 0,
-            description: item.description || '',
-            year: item.release_year || '',
-            director: item.director || ''
-        }));
-
-        res.json(watchlistItems);
+        res.json(result.recordset);
     } catch (error) {
         console.error('Error fetching watchlist:', error);
-        res.status(500).send('Internal Server Error');
+        res.status(500).json({ error: 'Failed to fetch watchlist' });
     }
 });
 
@@ -1543,13 +1867,93 @@ app.delete('/api/watchlist/movie/:username/:movieId', async (req, res) => {
     try {
         const { username, movieId } = req.params;
         const pool = await sql.connect(dbConfig);
+
         await pool.request()
             .input('username', sql.VarChar, username)
-            .input('movieID', sql.Int, parseInt(movieId, 10))
+            .input('movieID', sql.Int, movieId)
             .execute('RemoveMovieFromWatchlist');
-        res.status(200).send('Movie removed from watchlist');
+
+        res.json({ message: 'Removed from watchlist successfully' });
     } catch (error) {
         console.error('Error removing from watchlist:', error);
+        res.status(500).json({ error: 'Failed to remove from watchlist' });
+    }
+});
+
+app.delete('/api/watchlist/tvshow/:username/:tvShowId', async (req, res) => {
+    try {
+        const { username, tvShowId } = req.params;
+        const pool = await sql.connect(dbConfig);
+
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('tvShowID', sql.Int, tvShowId)
+            .query(`
+                DELETE FROM WATCHLIST
+                WHERE username = @username AND tvID = @tvShowID
+            `);
+
+        res.json({ message: 'Removed from watchlist successfully' });
+    } catch (error) {
+        console.error('Error removing from watchlist:', error);
+        res.status(500).json({ error: 'Failed to remove from watchlist' });
+    }
+});
+
+// Get all users (for search)
+app.get('/api/users', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request().query('SELECT username, email, pfp, bio FROM USERS');
+        res.send(result.recordset);
+    } catch (error) {
+        console.error('Error fetching users:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add friend endpoint
+app.post('/api/friends/add', async (req, res) => {
+    try {
+        const { username, friendUsername } = req.body;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('friendUsername', sql.VarChar, friendUsername)
+            .execute('sp_AddFriend');
+        res.status(200).send('Friend added successfully');
+    } catch (error) {
+        console.error('Error adding friend:', error);
+        res.status(500).send(error.message || 'Internal Server Error');
+    }
+});
+
+// Remove friend endpoint
+app.delete('/api/friends/remove', async (req, res) => {
+    try {
+        const { username, friendUsername } = req.body;
+        const pool = await sql.connect(dbConfig);
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('friendUsername', sql.VarChar, friendUsername)
+            .execute('sp_RemoveFriend');
+        res.status(200).send('Friend removed successfully');
+    } catch (error) {
+        console.error('Error removing friend:', error);
+        res.status(500).send(error.message || 'Internal Server Error');
+    }
+});
+
+// Get friends list
+app.get('/api/friends/:username', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('username', sql.VarChar, req.params.username)
+            .execute('sp_GetFriendList');
+        res.send(result.recordset);
+    } catch (error) {
+        console.error('Error fetching friends:', error);
         res.status(500).send('Internal Server Error');
     }
 });
@@ -1597,31 +2001,50 @@ app.get('/api/posts/:username/count', async (req, res) => {
     }
   });
 
-// Get user's watchlist
+// Add watchlist endpoints
+app.post('/api/watchlist/add', async (req, res) => {
+    try {
+        const { username, movieID, tvShowID } = req.body;
+        const pool = await sql.connect(dbConfig);
+
+        if (movieID) {
+            // Call stored procedure for adding movie to watchlist
+            await pool.request()
+                .input('username', sql.VarChar, username)
+                .input('movieID', sql.Int, movieID)
+                .execute('AddMovieToWatchlist');
+        } else if (tvShowID) {
+            // Add TV show to watchlist
+            await pool.request()
+                .input('username', sql.VarChar, username)
+                .input('tvShowID', sql.Int, tvShowID)
+                .query(`
+                    INSERT INTO WATCHLIST (username, movieID, tvID)
+                    VALUES (@username, NULL, @tvShowID)
+                `);
+        }
+
+        res.json({ message: 'Added to watchlist successfully' });
+    } catch (error) {
+        console.error('Error adding to watchlist:', error);
+        res.status(500).json({ error: 'Failed to add to watchlist' });
+    }
+});
+
 app.get('/api/watchlist/:username', async (req, res) => {
     try {
+        const { username } = req.params;
         const pool = await sql.connect(dbConfig);
+
+        // Get both movies and TV shows from watchlist
         const result = await pool.request()
-            .input('username', sql.VarChar, req.params.username)
+            .input('username', sql.VarChar, username)
             .execute('GetWatchlistForUser');
 
-        // Transform the data to match the frontend expectations
-        const watchlistItems = result.recordset.map(item => ({
-            id: parseInt(item.MovieID || item.TVShow_ID, 10), // Ensure ID is a number
-            title: item.name || item.Name,
-            type: item.Type.toLowerCase(),
-            poster: item.posters,
-            genre: item.genre,
-            rating: item.rating || 0,
-            description: item.description || '',
-            year: item.release_year || '',
-            director: item.director || ''
-        }));
-
-        res.json(watchlistItems);
+        res.json(result.recordset);
     } catch (error) {
         console.error('Error fetching watchlist:', error);
-        res.status(500).send('Internal Server Error');
+        res.status(500).json({ error: 'Failed to fetch watchlist' });
     }
 });
 
@@ -1662,14 +2085,36 @@ app.delete('/api/watchlist/movie/:username/:movieId', async (req, res) => {
     try {
         const { username, movieId } = req.params;
         const pool = await sql.connect(dbConfig);
+
         await pool.request()
             .input('username', sql.VarChar, username)
-            .input('movieID', sql.Int, parseInt(movieId, 10))
+            .input('movieID', sql.Int, movieId)
             .execute('RemoveMovieFromWatchlist');
-        res.status(200).send('Movie removed from watchlist');
+
+        res.json({ message: 'Removed from watchlist successfully' });
     } catch (error) {
         console.error('Error removing from watchlist:', error);
-        res.status(500).send('Internal Server Error');
+        res.status(500).json({ error: 'Failed to remove from watchlist' });
+    }
+});
+
+app.delete('/api/watchlist/tvshow/:username/:tvShowId', async (req, res) => {
+    try {
+        const { username, tvShowId } = req.params;
+        const pool = await sql.connect(dbConfig);
+
+        await pool.request()
+            .input('username', sql.VarChar, username)
+            .input('tvShowID', sql.Int, tvShowId)
+            .query(`
+                DELETE FROM WATCHLIST
+                WHERE username = @username AND tvID = @tvShowID
+            `);
+
+        res.json({ message: 'Removed from watchlist successfully' });
+    } catch (error) {
+        console.error('Error removing from watchlist:', error);
+        res.status(500).json({ error: 'Failed to remove from watchlist' });
     }
 });
 

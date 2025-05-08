@@ -16,63 +16,91 @@ export default function SocialFeed({ onInteract }) {
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const [activeSidebarItem, setActiveSidebarItem] = useState('home');
   const [posts, setPosts] = useState([]);
+  const [friends, setFriends] = useState([]);
 
-  // Fetch posts from database
+  // Fetch current user's friends
+  useEffect(() => {
+    const fetchFriends = async () => {
+      try {
+        const storedUser = localStorage.getItem('user');
+        if (!storedUser) return;
+        
+        const currentUser = JSON.parse(storedUser);
+        const response = await axios.get(`http://localhost:3001/api/friends/${currentUser.username}`);
+        setFriends(response.data.map(friend => friend.username));
+      } catch (error) {
+        console.error('Error fetching friends:', error);
+      }
+    };
+    fetchFriends();
+  }, []);
+
+  // Fetch posts from database and filter by friends
   useEffect(() => {
     const fetchPosts = async () => {
       try {
         const response = await axios.get('http://localhost:3001/api/posts');
-        console.log('Raw post data:', response.data); // Add this line
-        setPosts(response.data);
+        const storedUser = localStorage.getItem('user');
+        
+        if (storedUser) {
+          const currentUser = JSON.parse(storedUser);
+          // Filter posts to only show from friends or the current user
+          const filtered = response.data.filter(post => 
+            friends.includes(post.username) || post.username === currentUser.username
+          );
+          setPosts(filtered);
+        } else {
+          setPosts([]);
+        }
       } catch (error) {
         console.error('Error fetching posts:', error);
       }
     };
 
     fetchPosts();
-  }, []);
+  }, [friends]);
 
   // CreatePostButton
   const handlePostCreated = async (newPost) => {
-    try {
-      const storedUser = localStorage.getItem('user');
-      if (!storedUser) {
-        onInteract(); // Trigger login popup
-        return;
-      }
+    // try {
+    //   const storedUser = localStorage.getItem('user');
+    //   if (!storedUser) {
+    //     onInteract(); // Trigger login popup
+    //     return;
+    //   }
 
-      const user = JSON.parse(storedUser);
+    //   const user = JSON.parse(storedUser);
       
-      // Structure the post data according to the table schema
-      const postData = {
-        username: user.username,
-        contentText: newPost.content,
-        media: null,
-        pollID: null,
-        movieID: null,
-        tvShowID: null,
-        tags: newPost.tags || null,
-        title: newPost.title // Fixed: Access title directly from newPost
-      };
+    //   // Structure the post data according to the table schema
+    //   const postData = {
+    //     username: user.username,
+    //     contentText: newPost.content,
+    //     media: null,
+    //     pollID: null,
+    //     movieID: null,
+    //     tvShowID: null,
+    //     tags: newPost.tags || null,
+    //     title: newPost.title // Fixed: Access title directly from newPost
+    //   };
 
-      const response = await axios.post('http://localhost:3001/api/posts', postData);
+    //   //const response = await axios.post('http://localhost:3001/api/posts', postData);
       
-      // Construct the new post object for UI
-      const newPostForUI = {
-        ...postData,
-        postID: response.data.postId, // or response.data.postID depending on backend
-        upvoteCount: 0,
-        commentCount: 0,
-        dateOfPost: new Date().toISOString(),
-        pfp: user.pfp || null,
-        userVote: null,
-        comments: []
-      };
+    //   // Construct the new post object for UI
+    //   const newPostForUI = {
+    //     ...postData,
+    //     postID: response.data.postId, // or response.data.postID depending on backend
+    //     upvoteCount: 0,
+    //     commentCount: 0,
+    //     dateOfPost: new Date().toISOString(),
+    //     pfp: user.pfp || null,
+    //     userVote: null,
+    //     comments: []
+    //   };
 
-      setPosts(prevPosts => [newPostForUI, ...prevPosts]);
-    } catch (error) {
-      console.error('Error creating post:', error);
-    }
+    //   setPosts(prevPosts => [newPostForUI, ...prevPosts]);
+    // } catch (error) {
+    //   console.error('Error creating post:', error);
+    // }
   };
 
   const toggleExplore = () => {

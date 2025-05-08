@@ -52,15 +52,15 @@ export default function MovieBrowser() {
   const addToWatchlist = async (e, movie) => {
     e.stopPropagation(); 
     try {
-        // Get the current user from localStorage or your auth system
-        const username = localStorage.getItem('user'); // Adjust based on your auth implementation
-        if (!username) {
+        const storedUser = localStorage.getItem('user');
+        if (!storedUser) {
             alert('Please log in to add movies to your watchlist');
             return;
         }
-
+        
+        const user = JSON.parse(storedUser);
         await axios.post('http://localhost:3001/api/watchlist/add', {
-            username: username,
+            username: user.username,
             movieID: movie.id
         });
 
