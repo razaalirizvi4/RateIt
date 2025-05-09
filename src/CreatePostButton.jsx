@@ -163,6 +163,7 @@ export function CreatePostButton({ onPostCreated, currentUser = { name: "You", a
             setSelectedTvShow('');
             setPollOptions(['', '']);
             closeModal();
+            window.location.reload(); // Add this line to refresh the page
         })
         .catch(error => {
             console.error('Error creating post:', error);

@@ -4,6 +4,7 @@ import { X, Search, Plus, Home, Compass, Film, Tv, ChevronDown, ChevronRight, He
 import { CreatePostButton } from './CreatePostButton.jsx';
 import Sidebar from './Sidebar'; // Import the Sidebar component
 import Navbar from './Navbar'; // Adjust the path if necessary
+import Leaderboard from './Leaderboard';
 import axios from 'axios';
 
 export default function SocialFeed({ onInteract }) {
@@ -69,27 +70,43 @@ export default function SocialFeed({ onInteract }) {
         return;
       }
   
-      const response = await axios.post(`http://localhost:3001/api/posts/${postId}/vote`, {
-        voteType
+      const user = JSON.parse(storedUser);
+  
+      // Determine the endpoint based on current vote status
+      const post = posts.find(p => p.postID === postId);
+      const endpoint = post.userVote === 'up' ?
+        `http://localhost:3001/api/posts/${postId}/removeupvote` :
+        `http://localhost:3001/api/posts/${postId}/upvote`;
+  
+      const response = await axios.post(endpoint, {
+        userId: user.id
       });
   
-      // Update posts state with new vote count
-      setPosts(prevPosts =>
-        prevPosts.map(post =>
-          post.postID === postId
-            ? { ...post, upvoteCount: response.data.upvoteCount, userVote: voteType }
-            : post
-        )
-      );
+      setPosts(prevPosts => {
+        const updatedPosts = prevPosts.map(post => {
+          if (post.postID === postId) {
+            return {
+              ...post,
+              upvoteCount: response.data.upvoteCount,
+              userVote: post.userVote === 'up' ? null : 'up', // Toggle between up and null
+              comments: post.comments // Preserve the existing comments
+            };
+          }
+          return post;
+        });
   
-      // If the voted post is the selected post, update it too
-      if (selectedPost?.postID === postId) {
-        setSelectedPost(prev => ({
-          ...prev,
-          upvoteCount: response.data.upvoteCount,
-          userVote: voteType
-        }));
-      }
+        // If the modal is open with the current post, update it too
+        if (selectedPost && selectedPost.postID === postId) {
+          const updatedPost = updatedPosts.find(p => p.postID === postId);
+          setSelectedPost({
+            ...updatedPost,
+            comments: selectedPost.comments // Preserve the modal's comments
+          });
+        }
+  
+        return updatedPosts;
+      });
+  
     } catch (error) {
       console.error('Error voting on post:', error);
     }
@@ -262,7 +279,6 @@ const handlePollVote = async (pollId, optionId) => {
         setProfileDropdownOpen={setProfileDropdownOpen} 
       />
 
-      {/* Main content with added padding/margin */}
       <div className="max-w-5xl mx-auto px-4 py-4">
         <div className="flex gap-6">
           <Sidebar 
@@ -272,75 +288,84 @@ const handlePollVote = async (pollId, optionId) => {
             exploreExpanded={exploreExpanded} 
           />
           
-          {/* Posts feed */}
+          {/* Main content area */}
           <div className="flex-1">
-            {/* Add CreatePostButton here */}
             <div className="mb-4">
               <CreatePostButton onPostCreated={handlePostCreated} />
             </div>
             
-            {Array.isArray(filteredPosts) && filteredPosts.map((post) => (
-              <div 
-                key={post.postID} // Changed from post.id to post.postID
-                className="bg-white border border-gray-200 rounded-md mb-3 hover:border-gray-300 transition-colors"
-              >
-                <div className="flex">
-                  {/* Vote buttons */}
-                  <div className="flex flex-col items-center px-2 py-2 bg-gray-50 rounded-l-md">
-                    <button 
-                      onClick={() => handleVote(post.postID, 'up')}
-                      className={`p-1 rounded hover:bg-gray-200 transition ${post.userVote === 'up' ? 'text-orange-500' : 'text-gray-400'}`}
-                    >
-                      <ArrowUp size={20} />
-                    </button>
-                    <span className="text-xs font-medium text-gray-900">{post.upvoteCount || 0}</span>
-                    <button 
-                      onClick={() => handleVote(post.postID, 'down')}
-                      className={`p-1 rounded hover:bg-gray-200 transition ${post.userVote === 'down' ? 'text-blue-500' : 'text-gray-400'}`}
-                    >
-                      <ArrowDown size={20} />
-                    </button>
-                  </div>
-
-                  {/* Post content */}
-                  <div className="flex-1 p-3">
-                    <div className="flex items-center text-xs text-gray-500 mb-1">
-                      <img src={post.pfp || './images/pfp.jpg'} alt={post.username} className="w-5 h-5 rounded-full mr-1" />
-                      <span className="font-medium text-gray-900">r/{post.username}</span>
-                      <span className="mx-1">•</span>
-                      <span>{new Date(post.dateOfPost).toLocaleString()}</span>
-                    </div>
-                    
-                    <h3 className="text-lg font-medium text-gray-900 mb-1">{post.title || 'Untitled'}</h3>
-                    <p className="text-gray-800 text-sm mb-2">{post.contentText}</p>
-                    
-                    {post.media && (
-                      <div className="mb-2 rounded-md overflow-hidden">
-                        <img src={post.media} alt="Post image" className="w-full" />
+            <div className="flex gap-6">
+              {/* Posts feed */}
+              <div className="flex-1">
+                {Array.isArray(filteredPosts) && filteredPosts.map((post) => (
+                  <div 
+                    key={post.postID}
+                    className="bg-white border border-gray-200 rounded-md mb-3 hover:border-gray-300 transition-colors min-w-[600px]"
+                  >
+                    <div className="flex">
+                      {/* Vote buttons */}
+                      <div className="flex flex-col items-center px-2 py-2 bg-gray-50 rounded-l-md">
+                        <button 
+                          onClick={() => handleVote(post.postID, 'up')}
+                          className={`p-1 rounded hover:bg-gray-200 transition ${post.userVote === 'up' ? 'text-orange-500' : 'text-gray-400'}`}
+                        >
+                          <ArrowUp size={20} />
+                        </button>
+                        <span className="text-xs font-medium text-gray-900">{post.upvoteCount || 0}</span>
+                        <button 
+                          onClick={() => handleVote(post.postID, 'down')}
+                          className={`p-1 rounded hover:bg-gray-200 transition ${post.userVote === 'down' ? 'text-blue-500' : 'text-gray-400'}`}
+                        >
+                          <ArrowDown size={20} />
+                        </button>
                       </div>
-                    )}
-                    
-                    <div className="flex items-center text-gray-500 text-xs">
-                      <button 
-                        onClick={() => handlePostClick(post)}
-                        className="flex items-center hover:bg-gray-100 rounded-full px-2 py-1"
-                      >
-                        <MessageSquare size={16} className="mr-1" />
-                        {post.commentCount || 0} Comments
-                      </button>
-                      <button className="flex items-center hover:bg-gray-100 rounded-full px-2 py-1 ml-2">
-                        <Share size={16} className="mr-1" />
-                        Share
-                      </button>
-                      <button className="flex items-center hover:bg-gray-100 rounded-full px-2 py-1 ml-2">
-                        <BookmarkPlus size={16} className="mr-1" />
-                        Save
-                      </button>
+
+                      {/* Post content */}
+                      <div className="flex-1 p-3">
+                        <div className="flex items-center text-xs text-gray-500 mb-1">
+                          <img src={post.pfp || './images/pfp.jpg'} alt={post.username} className="w-5 h-5 rounded-full mr-1" />
+                          <span className="font-medium text-gray-900">r/{post.username}</span>
+                          <span className="mx-1">•</span>
+                          <span>{new Date(post.dateOfPost).toLocaleString()}</span>
+                        </div>
+                        
+                        <h3 className="text-lg font-medium text-gray-900 mb-1">{post.title || 'Untitled'}</h3>
+                        <p className="text-gray-800 text-sm mb-2">{post.contentText}</p>
+                        
+                        {post.media && (
+                          <div className="mb-2 rounded-md overflow-hidden">
+                            <img src={post.media} alt="Post image" className="w-full" />
+                          </div>
+                        )}
+                        
+                        <div className="flex items-center text-gray-500 text-xs">
+                          <button 
+                            onClick={() => handlePostClick(post)}
+                            className="flex items-center hover:bg-gray-100 rounded-full px-2 py-1"
+                          >
+                            <MessageSquare size={16} className="mr-1" />
+                            {post.commentCount || 0} Comments
+                          </button>
+                          <button className="flex items-center hover:bg-gray-100 rounded-full px-2 py-1 ml-2">
+                            <Share size={16} className="mr-1" />
+                            Share
+                          </button>
+                          <button className="flex items-center hover:bg-gray-100 rounded-full px-2 py-1 ml-2">
+                            <BookmarkPlus size={16} className="mr-1" />
+                            Save
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   </div>
-                </div>
+                ))}
               </div>
-            ))}
+            </div>
+          </div>
+          
+          {/* Leaderboard */}
+          <div className="w-80 flex-shrink-0">
+            <Leaderboard />
           </div>
         </div>
       </div>
@@ -470,7 +495,7 @@ const handlePollVote = async (pollId, optionId) => {
       )}
     </div>
   );
-} // Remove the extra semicolon and brace
+}
 
 
 
