@@ -106,23 +106,33 @@ export function CreatePostButton({ onPostCreated, currentUser = { name: "You", a
         return;
     }
 
-    // Structure the post data according to the API requirements
-    const postData = {
-        username: storedUser.username,
-        title: title,
-        contentText: content,
-        media: null,
-        pollID: null,
-        movieId: selectedMovie || null,
-        tvShowId: selectedTvShow || null,
-        tags: tags
-    };
+    // For poll posts, first create the poll and get the pollID
+    if (activeTab === 'poll') {
+        // Convert poll options to JSON array string
+        const optionsArray = JSON.stringify(pollOptions.filter(option => option.trim() !== ''));
+        
+        // Create poll first
+        axios.post('http://localhost:3001/api/polls', {
+            question: title,
+            optionsArray: optionsArray
+        })
+        .then(pollResponse => {
+            // Now create the post with the poll ID
+            const postData = {
+                username: storedUser.username,
+                title: title,
+                contentText: content,
+                media: null,
+                pollID: pollResponse.data.PollID,
+                movieId: selectedMovie || null,
+                tvShowId: selectedTvShow || null,
+                tags: tags
+            };
 
-    // Send to API
-    axios.post('http://localhost:3001/api/posts', postData)
+            return axios.post('http://localhost:3001/api/posts', postData);
+        })
         .then(response => {
             console.log('Post created:', response.data);
-            // Only call onPostCreated with the response data
             if (onPostCreated) {
                 const newPost = {
                     postID: response.data.postId,
@@ -140,7 +150,8 @@ export function CreatePostButton({ onPostCreated, currentUser = { name: "You", a
                     movieID: selectedMovie || null,
                     tvShowID: selectedTvShow || null,
                     content: content,
-                    pfp: storedUser.pfp || null
+                    pfp: storedUser.pfp || null,
+                    pollOptions: pollOptions.filter(option => option.trim() !== '')
                 };
                 onPostCreated(newPost);
             }
@@ -150,12 +161,36 @@ export function CreatePostButton({ onPostCreated, currentUser = { name: "You", a
             setTags('');
             setSelectedMovie('');
             setSelectedTvShow('');
+            setPollOptions(['', '']);
             closeModal();
         })
         .catch(error => {
             console.error('Error creating post:', error);
             alert('Error creating post: ' + (error.response?.data?.message || error.message));
         });
+    } else {
+        // Handle non-poll posts as before
+        const postData = {
+            username: storedUser.username,
+            title: title,
+            contentText: content,
+            media: null,
+            pollID: null,
+            movieId: selectedMovie || null,
+            tvShowId: selectedTvShow || null,
+            tags: tags
+        };
+
+        // Send to API
+        axios.post('http://localhost:3001/api/posts', postData)
+            .then(response => {
+                // ... existing code for regular post creation ...
+            })
+            .catch(error => {
+                console.error('Error creating post:', error);
+                alert('Error creating post: ' + (error.response?.data?.message || error.message));
+            });
+    }
 };
   
   const handleMediaUpload = (e) => {

@@ -407,11 +407,11 @@ app.get('/api/watchlist/:username', async (req, res) => {
 // Add movie to watchlist
 app.post('/api/watchlist/movie', async (req, res) => {
     try {
-        const { username, movieId } = req.body;
+        const { username, movieID } = req.body;
         const pool = await sql.connect(dbConfig);
         await pool.request()
             .input('username', sql.VarChar, username)
-            .input('movieID', sql.Int, movieId)
+            .input('movieID', sql.Int, movieID)
             .execute('AddMovieToWatchlist');
         res.status(200).send('Movie added to watchlist');
     } catch (error) {
@@ -421,14 +421,14 @@ app.post('/api/watchlist/movie', async (req, res) => {
 });
 
 // Remove movie from watchlist
-app.delete('/api/watchlist/movie/:username/:movieId', async (req, res) => {
+app.delete('/api/watchlist/movie/:username/:movieID', async (req, res) => {
     try {
-        const { username, movieId } = req.params;
+        const { username, movieID } = req.params;
         const pool = await sql.connect(dbConfig);
 
         await pool.request()
             .input('username', sql.VarChar, username)
-            .input('movieID', sql.Int, movieId)
+            .input('movieID', sql.Int, movieID)
             .execute('RemoveMovieFromWatchlist');
 
         res.json({ message: 'Removed from watchlist successfully' });
@@ -438,14 +438,14 @@ app.delete('/api/watchlist/movie/:username/:movieId', async (req, res) => {
     }
 });
 
-app.delete('/api/watchlist/tvshow/:username/:tvShowId', async (req, res) => {
+app.delete('/api/watchlist/tvshow/:username/:tvShowID', async (req, res) => {
     try {
-        const { username, tvShowId } = req.params;
+        const { username, tvShowID } = req.params;
         const pool = await sql.connect(dbConfig);
 
         await pool.request()
             .input('username', sql.VarChar, username)
-            .input('tvShowID', sql.Int, tvShowId)
+            .input('tvShowID', sql.Int, tvShowID)
             .query(`
                 DELETE FROM WATCHLIST
                 WHERE username = @username AND tvID = @tvShowID
@@ -466,7 +466,16 @@ app.get('/api/recommendations/:username', async (req, res) => {
         const result = await pool.request()
             .input('username', sql.VarChar(50), username)
             .execute('RecommendBasedOnWatchlist');
-        res.json(result.recordset);
+
+        // The stored procedure returns two recordsets:
+        // First recordset: Movie recommendations
+        // Second recordset: TV Show recommendations
+        const recommendations = {
+            movies: result.recordsets[0] || [],
+            tvshows: result.recordsets[1] || []
+        };
+
+        res.json(recommendations);
     } catch (error) {
         console.error('Error getting recommendations:', error);
         res.status(500).send('Internal Server Error');
@@ -604,12 +613,12 @@ app.get('/api/watchlist/:username', async (req, res) => {
 });
 
 // Add delete endpoint for watchlist
-app.delete('/api/watchlist/:username/:movieId', async (req, res) => {
+app.delete('/api/watchlist/:username/:movieID', async (req, res) => {
     try {
         const pool = await sql.connect(dbConfig);
         await pool.request()
             .input('username', sql.VarChar, req.params.username)
-            .input('movieID', sql.Int, req.params.movieId)
+            .input('movieID', sql.Int, req.params.movieID)
             .execute('RemoveMovieFromWatchlist');
         
         res.status(200).json({ message: 'Movie removed from watchlist successfully' });
@@ -622,11 +631,11 @@ app.delete('/api/watchlist/:username/:movieId', async (req, res) => {
 // Add movie to watchlist
 app.post('/api/watchlist/movie', async (req, res) => {
     try {
-        const { username, movieId } = req.body;
+        const { username, movieID } = req.body;
         const pool = await sql.connect(dbConfig);
         await pool.request()
             .input('username', sql.VarChar, username)
-            .input('movieID', sql.Int, movieId)
+            .input('movieID', sql.Int, movieID)
             .execute('AddMovieToWatchlist');
         res.status(200).send('Movie added to watchlist');
     } catch (error) {
@@ -636,14 +645,14 @@ app.post('/api/watchlist/movie', async (req, res) => {
 });
 
 // Remove movie from watchlist
-app.delete('/api/watchlist/movie/:username/:movieId', async (req, res) => {
+app.delete('/api/watchlist/movie/:username/:movieID', async (req, res) => {
     try {
-        const { username, movieId } = req.params;
+        const { username, movieID } = req.params;
         const pool = await sql.connect(dbConfig);
 
         await pool.request()
             .input('username', sql.VarChar, username)
-            .input('movieID', sql.Int, movieId)
+            .input('movieID', sql.Int, movieID)
             .execute('RemoveMovieFromWatchlist');
 
         res.json({ message: 'Removed from watchlist successfully' });
@@ -653,14 +662,14 @@ app.delete('/api/watchlist/movie/:username/:movieId', async (req, res) => {
     }
 });
 
-app.delete('/api/watchlist/tvshow/:username/:tvShowId', async (req, res) => {
+app.delete('/api/watchlist/tvshow/:username/:tvShowID', async (req, res) => {
     try {
-        const { username, tvShowId } = req.params;
+        const { username, tvShowID } = req.params;
         const pool = await sql.connect(dbConfig);
 
         await pool.request()
             .input('username', sql.VarChar, username)
-            .input('tvShowID', sql.Int, tvShowId)
+            .input('tvShowID', sql.Int, tvShowID)
             .query(`
                 DELETE FROM WATCHLIST
                 WHERE username = @username AND tvID = @tvShowID
@@ -731,6 +740,129 @@ app.get('/api/friends/:username', async (req, res) => {
     }
 });
 
+// Add this new endpoint for trending posts
+app.get('/api/posts/trending', async (req, res) => {
+  try {
+    const pool = await sql.connect(dbConfig);
+    const result = await pool.request()
+      .query(`
+        SELECT 
+          p.*,
+          u.pfp,
+          (SELECT COUNT(*) FROM COMMENTS c WHERE c.postID = p.postID) as commentCount
+        FROM POST_CONTENT p
+        LEFT JOIN USERS u ON p.username = u.username
+        ORDER BY p.upvoteCount DESC, p.dateOfPost DESC
+      `);
+    res.json(result.recordset);
+  } catch (error) {
+    console.error('Error fetching trending posts:', error);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
+// Add this new endpoint for creating polls
+app.post('/api/polls', async (req, res) => {
+    try {
+        const { question, optionsArray } = req.body;
+        
+        const pool = await sql.connect(dbConfig);
+        
+        // Create the poll with result = 0
+        const pollResult = await pool.request()
+            .input('question', sql.VarChar, question)
+            .query(`
+                INSERT INTO POLLS (question, dateCreated, result)
+                VALUES (@question, GETDATE(), 0);
+                SELECT SCOPE_IDENTITY() AS PollID;
+            `);
+            
+        const pollID = pollResult.recordset[0].PollID;
+        
+        // Create poll options
+        const options = JSON.parse(optionsArray);
+        for (const option of options) {
+            await pool.request()
+                .input('pollID', sql.Int, pollID)
+                .input('optionText', sql.VarChar, option)
+                .query(`
+                    INSERT INTO POLL_OPTIONS (pollID, optionText, voteCount)
+                    VALUES (@pollID, @optionText, 0)
+                `);
+        }
+        
+        res.json({ PollID: pollID });
+    } catch (error) {
+        console.error('Error creating poll:', error);
+        res.status(500).json({ message: 'Error creating poll' });
+    }
+});
+
+// Add endpoint for voting on polls
+app.post('/api/polls/:pollId/vote', async (req, res) => {
+    try {
+        const { pollId } = req.params;
+        const { optionId } = req.body;
+        
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('pollID', sql.Int, parseInt(pollId))
+            .input('optionID', sql.Int, parseInt(optionId))
+            .execute('sp_VoteOnPollOption');
+
+        // The stored procedure returns two result sets:
+        // First: Poll details
+        // Second: Updated options with vote counts
+        const pollDetails = result.recordsets[0][0];
+        const options = result.recordsets[1];
+
+        // Combine the results
+        const response = {
+            ...pollDetails,
+            options: options
+        };
+
+        res.json(response);
+    } catch (error) {
+        console.error('Error voting on poll:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Get poll details endpoint
+app.get('/api/polls/:pollId', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('pollID', sql.Int, parseInt(req.params.pollId))
+            .execute('sp_GetPollDetails');
+
+        // Since the stored procedure returns two result sets
+        // First set: Poll details
+        // Second set: Poll options
+        const pollDetails = result.recordsets[0][0]; // Get the first (and only) row from first recordset
+        const pollOptions = result.recordsets[1]; // Get all options from second recordset
+
+        // Calculate percentage for each option
+        const totalVotes = pollOptions.reduce((sum, option) => sum + (option.voteCount || 0), 0);
+        const optionsWithPercentage = pollOptions.map(option => ({
+            ...option,
+            percentage: totalVotes > 0 ? Math.round((option.voteCount || 0) * 100 / totalVotes) : 0
+        }));
+
+        // Combine the results into a single response object
+        const response = {
+            ...pollDetails,
+            options: optionsWithPercentage
+        };
+
+        res.json(response);
+    } catch (error) {
+        console.error('Error fetching poll details:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
 app.listen(port, () => {
     console.log(`Server running on http://localhost:${port}`);
 });
@@ -739,14 +871,14 @@ app.listen(port, () => {
 app.get('/api/posts', async (req, res) => {
     try {
         const pool = await sql.connect(dbConfig);
-        const { searchTerm, username, movieId, tvShowId, tag } = req.query;
+        const { searchTerm, username, movieID, tvShowID, tag } = req.query;
 
         // Call the stored procedure with optional parameters
         const result = await pool.request()
             .input('searchTerm', sql.VarChar, searchTerm || null)
             .input('username', sql.VarChar, username || null)
-            .input('movieID', sql.Int, movieId ? parseInt(movieId) : null)
-            .input('tvShowID', sql.Int, tvShowId ? parseInt(tvShowId) : null)
+            .input('movieID', sql.Int, movieID ? parseInt(movieID) : null)
+            .input('tvShowID', sql.Int, tvShowID ? parseInt(tvShowID) : null)
             .input('tag', sql.VarChar, tag || null)
             
             .execute('sp_SearchPosts');
@@ -761,7 +893,7 @@ app.get('/api/posts', async (req, res) => {
 // Add endpoint to create a new post
 app.post('/api/posts', async (req, res) => {
     try {
-        const { username, contentText, movieId, tvShowId, tags, pollId, title } = req.body;
+        const { username, contentText, movieID, tvShowID, tags, pollID, title } = req.body;
         const pool = await sql.connect(dbConfig);
 
         // Ensure tags is a string or null
@@ -772,9 +904,9 @@ app.post('/api/posts', async (req, res) => {
             .input('username', sql.VarChar, username)
             .input('contentText', sql.VarChar, contentText)
             .input('media', sql.VarBinary, null)
-            .input('pollID', sql.Int, pollId || null)
-            .input('movieID', sql.Int, movieId || null)
-            .input('tvShowID', sql.Int, tvShowId || null)
+            .input('pollID', sql.Int, pollID || null)
+            .input('movieID', sql.Int, movieID || null)
+            .input('tvShowID', sql.Int, tvShowID || null)
             .input('tags', sql.VarChar(500), sanitizedTags)
             .execute('sp_CreatePost');
 
@@ -976,12 +1108,12 @@ app.get('/api/watchlist/:username', async (req, res) => {
 });
 
 // Add delete endpoint for watchlist
-app.delete('/api/watchlist/:username/:movieId', async (req, res) => {
+app.delete('/api/watchlist/:username/:movieID', async (req, res) => {
     try {
         const pool = await sql.connect(dbConfig);
         await pool.request()
             .input('username', sql.VarChar, req.params.username)
-            .input('movieID', sql.Int, req.params.movieId)
+            .input('movieID', sql.Int, req.params.movieID)
             .execute('RemoveMovieFromWatchlist');
         
         res.status(200).json({ message: 'Movie removed from watchlist successfully' });
@@ -994,11 +1126,11 @@ app.delete('/api/watchlist/:username/:movieId', async (req, res) => {
 // Add movie to watchlist
 app.post('/api/watchlist/movie', async (req, res) => {
     try {
-        const { username, movieId } = req.body;
+        const { username, movieID } = req.body;
         const pool = await sql.connect(dbConfig);
         await pool.request()
             .input('username', sql.VarChar, username)
-            .input('movieID', sql.Int, movieId)
+            .input('movieID', sql.Int, movieID)
             .execute('AddMovieToWatchlist');
         res.status(200).send('Movie added to watchlist');
     } catch (error) {
@@ -1008,14 +1140,14 @@ app.post('/api/watchlist/movie', async (req, res) => {
 });
 
 // Remove movie from watchlist
-app.delete('/api/watchlist/movie/:username/:movieId', async (req, res) => {
+app.delete('/api/watchlist/movie/:username/:movieID', async (req, res) => {
     try {
-        const { username, movieId } = req.params;
+        const { username, movieID } = req.params;
         const pool = await sql.connect(dbConfig);
 
         await pool.request()
             .input('username', sql.VarChar, username)
-            .input('movieID', sql.Int, movieId)
+            .input('movieID', sql.Int, movieID)
             .execute('RemoveMovieFromWatchlist');
 
         res.json({ message: 'Removed from watchlist successfully' });
@@ -1025,14 +1157,14 @@ app.delete('/api/watchlist/movie/:username/:movieId', async (req, res) => {
     }
 });
 
-app.delete('/api/watchlist/tvshow/:username/:tvShowId', async (req, res) => {
+app.delete('/api/watchlist/tvshow/:username/:tvShowID', async (req, res) => {
     try {
-        const { username, tvShowId } = req.params;
+        const { username, tvShowID } = req.params;
         const pool = await sql.connect(dbConfig);
 
         await pool.request()
             .input('username', sql.VarChar, username)
-            .input('tvShowID', sql.Int, tvShowId)
+            .input('tvShowID', sql.Int, tvShowID)
             .query(`
                 DELETE FROM WATCHLIST
                 WHERE username = @username AND tvID = @tvShowID
@@ -1053,7 +1185,16 @@ app.get('/api/recommendations/:username', async (req, res) => {
         const result = await pool.request()
             .input('username', sql.VarChar(50), username)
             .execute('RecommendBasedOnWatchlist');
-        res.json(result.recordset);
+
+        // The stored procedure returns two recordsets:
+        // First recordset: Movie recommendations
+        // Second recordset: TV Show recommendations
+        const recommendations = {
+            movies: result.recordsets[0] || [],
+            tvshows: result.recordsets[1] || []
+        };
+
+        res.json(recommendations);
     } catch (error) {
         console.error('Error getting recommendations:', error);
         res.status(500).send('Internal Server Error');
@@ -1188,12 +1329,12 @@ app.get('/api/watchlist/:username', async (req, res) => {
 });
 
 // Add delete endpoint for watchlist
-app.delete('/api/watchlist/:username/:movieId', async (req, res) => {
+app.delete('/api/watchlist/:username/:movieID', async (req, res) => {
     try {
         const pool = await sql.connect(dbConfig);
         await pool.request()
             .input('username', sql.VarChar, req.params.username)
-            .input('movieID', sql.Int, req.params.movieId)
+            .input('movieID', sql.Int, req.params.movieID)
             .execute('RemoveMovieFromWatchlist');
         
         res.status(200).json({ message: 'Movie removed from watchlist successfully' });
@@ -1206,11 +1347,11 @@ app.delete('/api/watchlist/:username/:movieId', async (req, res) => {
 // Add movie to watchlist
 app.post('/api/watchlist/movie', async (req, res) => {
     try {
-        const { username, movieId } = req.body;
+        const { username, movieID } = req.body;
         const pool = await sql.connect(dbConfig);
         await pool.request()
             .input('username', sql.VarChar, username)
-            .input('movieID', sql.Int, movieId)
+            .input('movieID', sql.Int, movieID)
             .execute('AddMovieToWatchlist');
         res.status(200).send('Movie added to watchlist');
     } catch (error) {
@@ -1220,14 +1361,14 @@ app.post('/api/watchlist/movie', async (req, res) => {
 });
 
 // Remove movie from watchlist
-app.delete('/api/watchlist/movie/:username/:movieId', async (req, res) => {
+app.delete('/api/watchlist/movie/:username/:movieID', async (req, res) => {
     try {
-        const { username, movieId } = req.params;
+        const { username, movieID } = req.params;
         const pool = await sql.connect(dbConfig);
 
         await pool.request()
             .input('username', sql.VarChar, username)
-            .input('movieID', sql.Int, movieId)
+            .input('movieID', sql.Int, movieID)
             .execute('RemoveMovieFromWatchlist');
 
         res.json({ message: 'Removed from watchlist successfully' });
@@ -1237,14 +1378,14 @@ app.delete('/api/watchlist/movie/:username/:movieId', async (req, res) => {
     }
 });
 
-app.delete('/api/watchlist/tvshow/:username/:tvShowId', async (req, res) => {
+app.delete('/api/watchlist/tvshow/:username/:tvShowID', async (req, res) => {
     try {
-        const { username, tvShowId } = req.params;
+        const { username, tvShowID } = req.params;
         const pool = await sql.connect(dbConfig);
 
         await pool.request()
             .input('username', sql.VarChar, username)
-            .input('tvShowID', sql.Int, tvShowId)
+            .input('tvShowID', sql.Int, tvShowID)
             .query(`
                 DELETE FROM WATCHLIST
                 WHERE username = @username AND tvID = @tvShowID
@@ -1311,6 +1452,129 @@ app.get('/api/friends/:username', async (req, res) => {
         res.send(result.recordset);
     } catch (error) {
         console.error('Error fetching friends:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add this new endpoint for trending posts
+app.get('/api/posts/trending', async (req, res) => {
+  try {
+    const pool = await sql.connect(dbConfig);
+    const result = await pool.request()
+      .query(`
+        SELECT 
+          p.*,
+          u.pfp,
+          (SELECT COUNT(*) FROM COMMENTS c WHERE c.postID = p.postID) as commentCount
+        FROM POST_CONTENT p
+        LEFT JOIN USERS u ON p.username = u.username
+        ORDER BY p.upvoteCount DESC, p.dateOfPost DESC
+      `);
+    res.json(result.recordset);
+  } catch (error) {
+    console.error('Error fetching trending posts:', error);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
+// Add this new endpoint for creating polls
+app.post('/api/polls', async (req, res) => {
+    try {
+        const { question, optionsArray } = req.body;
+        
+        const pool = await sql.connect(dbConfig);
+        
+        // Create the poll with result = 0
+        const pollResult = await pool.request()
+            .input('question', sql.VarChar, question)
+            .query(`
+                INSERT INTO POLLS (question, dateCreated, result)
+                VALUES (@question, GETDATE(), 0);
+                SELECT SCOPE_IDENTITY() AS PollID;
+            `);
+            
+        const pollID = pollResult.recordset[0].PollID;
+        
+        // Create poll options
+        const options = JSON.parse(optionsArray);
+        for (const option of options) {
+            await pool.request()
+                .input('pollID', sql.Int, pollID)
+                .input('optionText', sql.VarChar, option)
+                .query(`
+                    INSERT INTO POLL_OPTIONS (pollID, optionText, voteCount)
+                    VALUES (@pollID, @optionText, 0)
+                `);
+        }
+        
+        res.json({ PollID: pollID });
+    } catch (error) {
+        console.error('Error creating poll:', error);
+        res.status(500).json({ message: 'Error creating poll' });
+    }
+});
+
+// Add endpoint for voting on polls
+app.post('/api/polls/:pollId/vote', async (req, res) => {
+    try {
+        const { pollId } = req.params;
+        const { optionId } = req.body;
+        
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('pollID', sql.Int, parseInt(pollId))
+            .input('optionID', sql.Int, parseInt(optionId))
+            .execute('sp_VoteOnPollOption');
+
+        // The stored procedure returns two result sets:
+        // First: Poll details
+        // Second: Updated options with vote counts
+        const pollDetails = result.recordsets[0][0];
+        const options = result.recordsets[1];
+
+        // Combine the results
+        const response = {
+            ...pollDetails,
+            options: options
+        };
+
+        res.json(response);
+    } catch (error) {
+        console.error('Error voting on poll:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Get poll details endpoint
+app.get('/api/polls/:pollId', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('pollID', sql.Int, parseInt(req.params.pollId))
+            .execute('sp_GetPollDetails');
+
+        // Since the stored procedure returns two result sets
+        // First set: Poll details
+        // Second set: Poll options
+        const pollDetails = result.recordsets[0][0]; // Get the first (and only) row from first recordset
+        const pollOptions = result.recordsets[1]; // Get all options from second recordset
+
+        // Calculate percentage for each option
+        const totalVotes = pollOptions.reduce((sum, option) => sum + (option.voteCount || 0), 0);
+        const optionsWithPercentage = pollOptions.map(option => ({
+            ...option,
+            percentage: totalVotes > 0 ? Math.round((option.voteCount || 0) * 100 / totalVotes) : 0
+        }));
+
+        // Combine the results into a single response object
+        const response = {
+            ...pollDetails,
+            options: optionsWithPercentage
+        };
+
+        res.json(response);
+    } catch (error) {
+        console.error('Error fetching poll details:', error);
         res.status(500).send('Internal Server Error');
     }
 });
@@ -1619,12 +1883,12 @@ app.get('/api/watchlist/:username', async (req, res) => {
 });
 
 // Add delete endpoint for watchlist
-app.delete('/api/watchlist/:username/:movieId', async (req, res) => {
+app.delete('/api/watchlist/:username/:movieID', async (req, res) => {
     try {
         const pool = await sql.connect(dbConfig);
         await pool.request()
             .input('username', sql.VarChar, req.params.username)
-            .input('movieID', sql.Int, req.params.movieId)
+            .input('movieID', sql.Int, req.params.movieID)
             .execute('RemoveMovieFromWatchlist');
         
         res.status(200).json({ message: 'Movie removed from watchlist successfully' });
@@ -1637,11 +1901,11 @@ app.delete('/api/watchlist/:username/:movieId', async (req, res) => {
 // Add movie to watchlist
 app.post('/api/watchlist/movie', async (req, res) => {
     try {
-        const { username, movieId } = req.body;
+        const { username, movieID } = req.body;
         const pool = await sql.connect(dbConfig);
         await pool.request()
             .input('username', sql.VarChar, username)
-            .input('movieID', sql.Int, movieId)
+            .input('movieID', sql.Int, movieID)
             .execute('AddMovieToWatchlist');
         res.status(200).send('Movie added to watchlist');
     } catch (error) {
@@ -1651,14 +1915,14 @@ app.post('/api/watchlist/movie', async (req, res) => {
 });
 
 // Remove movie from watchlist
-app.delete('/api/watchlist/movie/:username/:movieId', async (req, res) => {
+app.delete('/api/watchlist/movie/:username/:movieID', async (req, res) => {
     try {
-        const { username, movieId } = req.params;
+        const { username, movieID } = req.params;
         const pool = await sql.connect(dbConfig);
 
         await pool.request()
             .input('username', sql.VarChar, username)
-            .input('movieID', sql.Int, movieId)
+            .input('movieID', sql.Int, movieID)
             .execute('RemoveMovieFromWatchlist');
 
         res.json({ message: 'Removed from watchlist successfully' });
@@ -1668,14 +1932,14 @@ app.delete('/api/watchlist/movie/:username/:movieId', async (req, res) => {
     }
 });
 
-app.delete('/api/watchlist/tvshow/:username/:tvShowId', async (req, res) => {
+app.delete('/api/watchlist/tvshow/:username/:tvShowID', async (req, res) => {
     try {
-        const { username, tvShowId } = req.params;
+        const { username, tvShowID } = req.params;
         const pool = await sql.connect(dbConfig);
 
         await pool.request()
             .input('username', sql.VarChar, username)
-            .input('tvShowID', sql.Int, tvShowId)
+            .input('tvShowID', sql.Int, tvShowID)
             .query(`
                 DELETE FROM WATCHLIST
                 WHERE username = @username AND tvID = @tvShowID
@@ -1696,7 +1960,16 @@ app.get('/api/recommendations/:username', async (req, res) => {
         const result = await pool.request()
             .input('username', sql.VarChar(50), username)
             .execute('RecommendBasedOnWatchlist');
-        res.json(result.recordset);
+
+        // The stored procedure returns two recordsets:
+        // First recordset: Movie recommendations
+        // Second recordset: TV Show recommendations
+        const recommendations = {
+            movies: result.recordsets[0] || [],
+            tvshows: result.recordsets[1] || []
+        };
+
+        res.json(recommendations);
     } catch (error) {
         console.error('Error getting recommendations:', error);
         res.status(500).send('Internal Server Error');
@@ -1831,12 +2104,12 @@ app.get('/api/watchlist/:username', async (req, res) => {
 });
 
 // Add delete endpoint for watchlist
-app.delete('/api/watchlist/:username/:movieId', async (req, res) => {
+app.delete('/api/watchlist/:username/:movieID', async (req, res) => {
     try {
         const pool = await sql.connect(dbConfig);
         await pool.request()
             .input('username', sql.VarChar, req.params.username)
-            .input('movieID', sql.Int, req.params.movieId)
+            .input('movieID', sql.Int, req.params.movieID)
             .execute('RemoveMovieFromWatchlist');
         
         res.status(200).json({ message: 'Movie removed from watchlist successfully' });
@@ -1849,11 +2122,11 @@ app.delete('/api/watchlist/:username/:movieId', async (req, res) => {
 // Add movie to watchlist
 app.post('/api/watchlist/movie', async (req, res) => {
     try {
-        const { username, movieId } = req.body;
+        const { username, movieID } = req.body;
         const pool = await sql.connect(dbConfig);
         await pool.request()
             .input('username', sql.VarChar, username)
-            .input('movieID', sql.Int, movieId)
+            .input('movieID', sql.Int, movieID)
             .execute('AddMovieToWatchlist');
         res.status(200).send('Movie added to watchlist');
     } catch (error) {
@@ -1863,14 +2136,14 @@ app.post('/api/watchlist/movie', async (req, res) => {
 });
 
 // Remove movie from watchlist
-app.delete('/api/watchlist/movie/:username/:movieId', async (req, res) => {
+app.delete('/api/watchlist/movie/:username/:movieID', async (req, res) => {
     try {
-        const { username, movieId } = req.params;
+        const { username, movieID } = req.params;
         const pool = await sql.connect(dbConfig);
 
         await pool.request()
             .input('username', sql.VarChar, username)
-            .input('movieID', sql.Int, movieId)
+            .input('movieID', sql.Int, movieID)
             .execute('RemoveMovieFromWatchlist');
 
         res.json({ message: 'Removed from watchlist successfully' });
@@ -1880,14 +2153,14 @@ app.delete('/api/watchlist/movie/:username/:movieId', async (req, res) => {
     }
 });
 
-app.delete('/api/watchlist/tvshow/:username/:tvShowId', async (req, res) => {
+app.delete('/api/watchlist/tvshow/:username/:tvShowID', async (req, res) => {
     try {
-        const { username, tvShowId } = req.params;
+        const { username, tvShowID } = req.params;
         const pool = await sql.connect(dbConfig);
 
         await pool.request()
             .input('username', sql.VarChar, username)
-            .input('tvShowID', sql.Int, tvShowId)
+            .input('tvShowID', sql.Int, tvShowID)
             .query(`
                 DELETE FROM WATCHLIST
                 WHERE username = @username AND tvID = @tvShowID
@@ -1954,6 +2227,129 @@ app.get('/api/friends/:username', async (req, res) => {
         res.send(result.recordset);
     } catch (error) {
         console.error('Error fetching friends:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add this new endpoint for trending posts
+app.get('/api/posts/trending', async (req, res) => {
+  try {
+    const pool = await sql.connect(dbConfig);
+    const result = await pool.request()
+      .query(`
+        SELECT 
+          p.*,
+          u.pfp,
+          (SELECT COUNT(*) FROM COMMENTS c WHERE c.postID = p.postID) as commentCount
+        FROM POST_CONTENT p
+        LEFT JOIN USERS u ON p.username = u.username
+        ORDER BY p.upvoteCount DESC, p.dateOfPost DESC
+      `);
+    res.json(result.recordset);
+  } catch (error) {
+    console.error('Error fetching trending posts:', error);
+    res.status(500).send('Internal Server Error');
+  }
+});
+
+// Add this new endpoint for creating polls
+app.post('/api/polls', async (req, res) => {
+    try {
+        const { question, optionsArray } = req.body;
+        
+        const pool = await sql.connect(dbConfig);
+        
+        // Create the poll with result = 0
+        const pollResult = await pool.request()
+            .input('question', sql.VarChar, question)
+            .query(`
+                INSERT INTO POLLS (question, dateCreated, result)
+                VALUES (@question, GETDATE(), 0);
+                SELECT SCOPE_IDENTITY() AS PollID;
+            `);
+            
+        const pollID = pollResult.recordset[0].PollID;
+        
+        // Create poll options
+        const options = JSON.parse(optionsArray);
+        for (const option of options) {
+            await pool.request()
+                .input('pollID', sql.Int, pollID)
+                .input('optionText', sql.VarChar, option)
+                .query(`
+                    INSERT INTO POLL_OPTIONS (pollID, optionText, voteCount)
+                    VALUES (@pollID, @optionText, 0)
+                `);
+        }
+        
+        res.json({ PollID: pollID });
+    } catch (error) {
+        console.error('Error creating poll:', error);
+        res.status(500).json({ message: 'Error creating poll' });
+    }
+});
+
+// Add endpoint for voting on polls
+app.post('/api/polls/:pollId/vote', async (req, res) => {
+    try {
+        const { pollId } = req.params;
+        const { optionId } = req.body;
+        
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('pollID', sql.Int, parseInt(pollId))
+            .input('optionID', sql.Int, parseInt(optionId))
+            .execute('sp_VoteOnPollOption');
+
+        // The stored procedure returns two result sets:
+        // First: Poll details
+        // Second: Updated options with vote counts
+        const pollDetails = result.recordsets[0][0];
+        const options = result.recordsets[1];
+
+        // Combine the results
+        const response = {
+            ...pollDetails,
+            options: options
+        };
+
+        res.json(response);
+    } catch (error) {
+        console.error('Error voting on poll:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Get poll details endpoint
+app.get('/api/polls/:pollId', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .input('pollID', sql.Int, parseInt(req.params.pollId))
+            .execute('sp_GetPollDetails');
+
+        // Since the stored procedure returns two result sets
+        // First set: Poll details
+        // Second set: Poll options
+        const pollDetails = result.recordsets[0][0]; // Get the first (and only) row from first recordset
+        const pollOptions = result.recordsets[1]; // Get all options from second recordset
+
+        // Calculate percentage for each option
+        const totalVotes = pollOptions.reduce((sum, option) => sum + (option.voteCount || 0), 0);
+        const optionsWithPercentage = pollOptions.map(option => ({
+            ...option,
+            percentage: totalVotes > 0 ? Math.round((option.voteCount || 0) * 100 / totalVotes) : 0
+        }));
+
+        // Combine the results into a single response object
+        const response = {
+            ...pollDetails,
+            options: optionsWithPercentage
+        };
+
+        res.json(response);
+    } catch (error) {
+        console.error('Error fetching poll details:', error);
         res.status(500).send('Internal Server Error');
     }
 });
@@ -2049,12 +2445,12 @@ app.get('/api/watchlist/:username', async (req, res) => {
 });
 
 // Add delete endpoint for watchlist
-app.delete('/api/watchlist/:username/:movieId', async (req, res) => {
+app.delete('/api/watchlist/:username/:movieID', async (req, res) => {
     try {
         const pool = await sql.connect(dbConfig);
         await pool.request()
             .input('username', sql.VarChar, req.params.username)
-            .input('movieID', sql.Int, req.params.movieId)
+            .input('movieID', sql.Int, req.params.movieID)
             .execute('RemoveMovieFromWatchlist');
         
         res.status(200).json({ message: 'Movie removed from watchlist successfully' });
@@ -2067,11 +2463,11 @@ app.delete('/api/watchlist/:username/:movieId', async (req, res) => {
 // Add movie to watchlist
 app.post('/api/watchlist/movie', async (req, res) => {
     try {
-        const { username, movieId } = req.body;
+        const { username, movieID } = req.body;
         const pool = await sql.connect(dbConfig);
         await pool.request()
             .input('username', sql.VarChar, username)
-            .input('movieID', sql.Int, movieId)
+            .input('movieID', sql.Int, movieID)
             .execute('AddMovieToWatchlist');
         res.status(200).send('Movie added to watchlist');
     } catch (error) {
@@ -2081,14 +2477,14 @@ app.post('/api/watchlist/movie', async (req, res) => {
 });
 
 // Remove movie from watchlist
-app.delete('/api/watchlist/movie/:username/:movieId', async (req, res) => {
+app.delete('/api/watchlist/movie/:username/:movieID', async (req, res) => {
     try {
-        const { username, movieId } = req.params;
+        const { username, movieID } = req.params;
         const pool = await sql.connect(dbConfig);
 
         await pool.request()
             .input('username', sql.VarChar, username)
-            .input('movieID', sql.Int, movieId)
+            .input('movieID', sql.Int, movieID)
             .execute('RemoveMovieFromWatchlist');
 
         res.json({ message: 'Removed from watchlist successfully' });
@@ -2098,14 +2494,14 @@ app.delete('/api/watchlist/movie/:username/:movieId', async (req, res) => {
     }
 });
 
-app.delete('/api/watchlist/tvshow/:username/:tvShowId', async (req, res) => {
+app.delete('/api/watchlist/tvshow/:username/:tvShowID', async (req, res) => {
     try {
-        const { username, tvShowId } = req.params;
+        const { username, tvShowID } = req.params;
         const pool = await sql.connect(dbConfig);
 
         await pool.request()
             .input('username', sql.VarChar, username)
-            .input('tvShowID', sql.Int, tvShowId)
+            .input('tvShowID', sql.Int, tvShowID)
             .query(`
                 DELETE FROM WATCHLIST
                 WHERE username = @username AND tvID = @tvShowID
@@ -2126,7 +2522,16 @@ app.get('/api/recommendations/:username', async (req, res) => {
         const result = await pool.request()
             .input('username', sql.VarChar(50), username)
             .execute('RecommendBasedOnWatchlist');
-        res.json(result.recordset);
+
+        // The stored procedure returns two recordsets:
+        // First recordset: Movie recommendations
+        // Second recordset: TV Show recommendations
+        const recommendations = {
+            movies: result.recordsets[0] || [],
+            tvshows: result.recordsets[1] || []
+        };
+
+        res.json(recommendations);
     } catch (error) {
         console.error('Error getting recommendations:', error);
         res.status(500).send('Internal Server Error');

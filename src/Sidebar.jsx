@@ -1,5 +1,5 @@
 import { Link, useNavigate } from 'react-router-dom';
-import { Home, Compass, Film, Tv, ChevronDown, ChevronRight, BookmarkPlus, Users } from 'lucide-react';
+import { Home, Compass, Film, Tv, ChevronDown, ChevronRight, BookmarkPlus, Users, TrendingUp, Sparkles } from 'lucide-react';
 
 const Sidebar = ({ activeSidebarItem, setActiveSidebarItem, toggleExplore, exploreExpanded }) => {
   const navigate = useNavigate();
@@ -66,6 +66,20 @@ const Sidebar = ({ activeSidebarItem, setActiveSidebarItem, toggleExplore, explo
           </div>
         )}
 
+        {/* Recommendations Button */}
+        <Link 
+          to="/recommendations"
+          className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
+            activeSidebarItem === 'recommendations' 
+              ? 'bg-gray-100 text-gray-900' 
+              : 'text-gray-600 hover:bg-gray-50'
+          }`}
+          onClick={() => setActiveSidebarItem('recommendations')}
+        >
+          <Sparkles size={18} className="mr-3" />
+          Recommendations
+        </Link>
+
         {/* Watchlist Button */}
         <Link 
           to="/watchlist"
@@ -92,6 +106,20 @@ const Sidebar = ({ activeSidebarItem, setActiveSidebarItem, toggleExplore, explo
         >
           <Users size={18} className="mr-3" />
           People
+        </Link>
+        
+        {/* Trending Button */}
+        <Link 
+          to="/trending"
+          className={`w-full flex items-center px-3 py-2 text-sm font-medium rounded-md ${
+            activeSidebarItem === 'trending' 
+              ? 'bg-gray-100 text-gray-900' 
+              : 'text-gray-600 hover:bg-gray-50'
+          }`}
+          onClick={() => setActiveSidebarItem('trending')}
+        >
+          <TrendingUp size={18} className="mr-3" />
+          Trending
         </Link>
       </nav>
     </div>
