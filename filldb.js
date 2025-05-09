@@ -510,6 +510,25 @@ app.get('/api/posts/sorted', async (req, res) => {
     }
 });
 
+// Add endpoint for getting top posters
+app.get('/api/users/top-posters', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .query(`
+                SELECT TOP(3) u.username, u.pfp, COUNT(p.postID) as PostCount
+                FROM USERS u
+                LEFT JOIN POST_CONTENT p ON u.username = p.username
+                GROUP BY u.username, u.pfp
+                ORDER BY PostCount DESC
+            `);
+        res.json(result.recordset);
+    } catch (error) {
+        console.error('Error fetching top posters:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
 // Add endpoint for getting post comments
 app.get('/api/posts/:postId/comments', async (req, res) => {
     try {
@@ -1225,6 +1244,25 @@ app.get('/api/posts/sorted', async (req, res) => {
         res.json(result.recordset);
     } catch (error) {
         console.error('Error fetching sorted posts:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add endpoint for getting top posters
+app.get('/api/users/top-posters', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .query(`
+                SELECT u.username, u.pfp, COUNT(p.postID) as PostCount
+                FROM USERS u
+                LEFT JOIN POSTS p ON u.username = p.username
+                GROUP BY u.username, u.pfp
+                ORDER BY PostCount DESC
+            `);
+        res.json(result.recordset);
+    } catch (error) {
+        console.error('Error fetching top posters:', error);
         res.status(500).send('Internal Server Error');
     }
 });
@@ -2004,6 +2042,25 @@ app.get('/api/posts/sorted', async (req, res) => {
     }
 });
 
+// Add endpoint for getting top posters
+app.get('/api/users/top-posters', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .query(`
+                SELECT u.username, u.pfp, COUNT(p.postID) as PostCount
+                FROM USERS u
+                LEFT JOIN POSTS p ON u.username = p.username
+                GROUP BY u.username, u.pfp
+                ORDER BY PostCount DESC
+            `);
+        res.json(result.recordset);
+    } catch (error) {
+        console.error('Error fetching top posters:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
 // Add endpoint for getting post comments
 app.get('/api/posts/:postId/comments', async (req, res) => {
     try {
@@ -2562,6 +2619,25 @@ app.get('/api/posts/sorted', async (req, res) => {
         res.json(result.recordset);
     } catch (error) {
         console.error('Error fetching sorted posts:', error);
+        res.status(500).send('Internal Server Error');
+    }
+});
+
+// Add endpoint for getting top posters
+app.get('/api/users/top-posters', async (req, res) => {
+    try {
+        const pool = await sql.connect(dbConfig);
+        const result = await pool.request()
+            .query(`
+                SELECT u.username, u.pfp, COUNT(p.postID) as PostCount
+                FROM USERS u
+                LEFT JOIN POSTS p ON u.username = p.username
+                GROUP BY u.username, u.pfp
+                ORDER BY PostCount DESC
+            `);
+        res.json(result.recordset);
+    } catch (error) {
+        console.error('Error fetching top posters:', error);
         res.status(500).send('Internal Server Error');
     }
 });

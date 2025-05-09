@@ -37,7 +37,7 @@ export default function Leaderboard() {
                 #{index + 1}
               </span>
               <img
-                src={user.pfp || './images/pfp.jpg'}
+                src={user.pfp ? `http://localhost:3001${user.pfp}` : './images/pfp.jpg'}
                 alt={user.username}
                 className="w-8 h-8 rounded-full mx-2"
               />
