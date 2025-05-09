@@ -10,6 +10,7 @@ import Recommendations from './Recommendations';
 import LoginSignup from './LoginSignup';
 import Watchlist from './Watchlist';
 import People from './People';
+import Trending from './Trending';
 
 function App() {
   const [isPopupOpen, setPopupOpen] = useState(false);
@@ -36,6 +37,7 @@ function App() {
         <Route path="/recommendations" element={<Recommendations />} />
         <Route path="/watchlist" element={<Watchlist />} />
         <Route path="/people" element={<People onInteract={handleInteraction} />} />
+        <Route path="/trending" element={<Trending onInteract={handleInteraction} />} />
       </Routes>
       {isPopupOpen && <LoginSignup onClose={() => setPopupOpen(false)} />}
     </Router>

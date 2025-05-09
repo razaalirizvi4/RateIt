@@ -60,6 +60,73 @@ export default function SocialFeed({ onInteract }) {
     fetchPosts();
   }, [friends]);
 
+
+  const handleVote = async (postId, voteType) => {
+    try {
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) {
+        onInteract(); // Trigger login popup
+        return;
+      }
+  
+      const response = await axios.post(`http://localhost:3001/api/posts/${postId}/vote`, {
+        voteType
+      });
+  
+      // Update posts state with new vote count
+      setPosts(prevPosts =>
+        prevPosts.map(post =>
+          post.postID === postId
+            ? { ...post, upvoteCount: response.data.upvoteCount, userVote: voteType }
+            : post
+        )
+      );
+  
+      // If the voted post is the selected post, update it too
+      if (selectedPost?.postID === postId) {
+        setSelectedPost(prev => ({
+          ...prev,
+          upvoteCount: response.data.upvoteCount,
+          userVote: voteType
+        }));
+      }
+    } catch (error) {
+      console.error('Error voting on post:', error);
+    }
+  };
+  
+  const closeModal = () => {
+    setSelectedPost(null);
+  };
+  
+  const handleCommentSubmit = async (e) => {
+    e.preventDefault();
+    if (!newComment.trim()) return;
+  
+    try {
+      const storedUser = localStorage.getItem('user');
+      if (!storedUser) {
+        onInteract();
+        return;
+      }
+  
+      const user = JSON.parse(storedUser);
+      
+      const response = await axios.post(`http://localhost:3001/api/posts/${selectedPost.postID}/comments`, {
+        username: user.username,
+        commentText: newComment
+      });
+  
+      setSelectedPost(prev => ({
+        ...prev,
+        comments: [...(prev.comments || []), response.data]
+      }));
+      
+      setNewComment('');
+    } catch (error) {
+      console.error('Error adding comment:', error);
+    }
+  };
   // CreatePostButton
   const handlePostCreated = async (newPost) => {
     // try {
@@ -125,213 +192,60 @@ export default function SocialFeed({ onInteract }) {
     onInteract();
     const currentPost = posts.find(p => p.postID === post.postID);
     
-    // Fetch comments using the stored procedure
-    const fetchComments = async () => {
-      try {
-        const response = await axios.get(`http://localhost:3001/api/posts/${post.postID}/comments`, {
-          params: {
-            sortBy: 'recent' // You can make this configurable later
-          }
-        });
-        
-        const postWithComments = {
-          ...currentPost,
-          comments: response.data
-        };
-        setSelectedPost(postWithComments);
-      } catch (error) {
-        console.error('Error fetching comments:', error);
-        setSelectedPost(currentPost);
-      }
-    };
-    
-    fetchComments();
-  };
-
-  const closeModal = () => {
-    setSelectedPost(null);
-    setNewComment('');
-  };
-
-  const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value);
-  };
-
-  const toggleProfileDropdown = () => {
-    setProfileDropdownOpen(!profileDropdownOpen);
-  };
-  
-  // Close profile dropdown
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (profileDropdownOpen && !event.target.closest('.profile-dropdown-container')) {
-        setProfileDropdownOpen(false);
-      }
-    };
-    
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [profileDropdownOpen]);
-
-  const handleVote = async (postId, vote) => {
-    try {
-      const storedUser = localStorage.getItem('user');
-      if (!storedUser) {
-        onInteract(); // Trigger login popup
-        return;
-      }
-
-      const user = JSON.parse(storedUser);
-      
-      // Determine the endpoint based on current vote status
-      const post = posts.find(p => p.postID === postId);
-      const endpoint = post.userVote === 'up' ? 
-        `http://localhost:3001/api/posts/${postId}/removeupvote` : 
-        `http://localhost:3001/api/posts/${postId}/upvote`;
-      
-      const response = await axios.post(endpoint, {
-        userId: user.id
-      });
-
-      setPosts(prevPosts => {
-        const updatedPosts = prevPosts.map(post => {
-          if (post.postID === postId) {
-            return {
-              ...post,
-              upvoteCount: response.data.upvoteCount,
-              userVote: post.userVote === 'up' ? null : 'up', // Toggle between up and null
-              comments: post.comments // Preserve the existing comments
+    // Fetch comments and poll data if exists
+    const fetchData = async () => {
+        try {
+            const [commentsResponse, pollResponse] = await Promise.all([
+                axios.get(`http://localhost:3001/api/posts/${post.postID}/comments`, {
+                    params: { sortBy: 'recent' }
+                }),
+                post.pollID ? axios.get(`http://localhost:3001/api/polls/${post.pollID}`) : Promise.resolve(null)
+            ]);
+            
+            const postWithData = {
+                ...currentPost,
+                comments: commentsResponse.data,
+                pollData: pollResponse?.data || null
             };
-          }
-          return post;
-        });
-        
-        if (selectedPost && selectedPost.postID === postId) {
-          const updatedPost = updatedPosts.find(p => p.postID === postId);
-          setSelectedPost({
-            ...updatedPost,
-            comments: selectedPost.comments // Preserve the modal's comments
-          });
+            setSelectedPost(postWithData);
+        } catch (error) {
+            console.error('Error fetching post data:', error);
+            setSelectedPost(currentPost);
         }
-        
-        return updatedPosts;
-      });
-    } catch (error) {
-      console.error('Error voting on post:', error);
-    }
-  };
-
-  const handleCommentSubmit = async (e) => {
-    e.preventDefault();
-    if (!newComment.trim()) return;
+    };
     
-    const storedUser = localStorage.getItem('user');
-    if (!storedUser) {
-        onInteract(); // Trigger login popup
-        return;
-    }
-
-    const user = JSON.parse(storedUser);
-    
-    try {
-        const response = await axios.post(`http://localhost:3001/api/posts/${selectedPost.postID}/comments`, {
-            username: user.username,
-            commentText: newComment
-        });
-
-        const newCommentObj = response.data;
-        
-        setPosts(prevPosts => {
-            return prevPosts.map(post => {
-                if (post.postID === selectedPost.postID) {
-                    return {
-                        ...post,
-                        comments: [...(post.comments || []), newCommentObj]
-                    };
-                }
-                return post;
-            });
-        });
-        
-        setSelectedPost(prev => ({
-            ...prev,
-            comments: [...(prev.comments || []), newCommentObj]
-        }));
-        
-        setNewComment('');
-    } catch (error) {
-        console.error('Error adding comment:', error);
-    }
+    fetchData();
 };
 
-const handleCommentVote = async (commentId, vote) => {
-  try {
-    const storedUser = localStorage.getItem('user');
-    if (!storedUser) {
-      onInteract(); // Trigger login popup
-      return;
-    }
-
-    const user = JSON.parse(storedUser);
-    
-    // Determine the endpoint based on current vote status
-    const comment = selectedPost.comments.find(c => c.commentID === commentId);
-    const endpoint = comment.userVote === 'up' ? 
-      `http://localhost:3001/api/comments/${commentId}/removeupvote` : 
-      `http://localhost:3001/api/comments/${commentId}/upvote`;
-    
-    console.log('Making request to:', endpoint); // Debug log
-    console.log('With user:', user.id); // Debug log
-    
-    const response = await axios.post(endpoint, {
-      userId: user.id
-    });
-
-    console.log('Response:', response.data); // Debug log
-
-    // Update the posts and comments state
-    setPosts(prevPosts => {
-      return prevPosts.map(post => {
-        if (post.postID === selectedPost.postID) {
-          return {
-            ...post,
-            comments: post.comments.map(comment => {
-              if (comment.commentID === commentId) {
-                return {
-                  ...comment,
-                  upvoteCount: response.data.upvoteCount,
-                  userVote: comment.userVote === 'up' ? null : 'up'
-                };
-              }
-              return comment;
-            })
-          };
+const handlePollVote = async (pollId, optionId) => {
+    try {
+        const storedUser = localStorage.getItem('user');
+        if (!storedUser) {
+            onInteract(); // Trigger login popup
+            return;
         }
-        return post;
-      });
-    });
 
-    // Update the selected post if it's open in the modal
-    if (selectedPost) {
-      setSelectedPost(prev => ({
-        ...prev,
-        comments: prev.comments.map(comment => {
-          if (comment.commentID === commentId) {
-            return {
-              ...comment,
-              upvoteCount: response.data.upvoteCount,
-              userVote: comment.userVote === 'up' ? null : 'up'
-            };
-          }
-          return comment;
-        })
-      }));
+        const response = await axios.post(`http://localhost:3001/api/polls/${pollId}/vote`, {
+            optionId: optionId
+        });
+
+        // Update the selected post with new poll data
+        setSelectedPost(prev => ({
+            ...prev,
+            pollData: response.data
+        }));
+
+        // Update the posts list
+        setPosts(prevPosts => 
+            prevPosts.map(post => 
+                post.postID === selectedPost.postID 
+                    ? { ...post, pollData: response.data }
+                    : post
+            )
+        );
+    } catch (error) {
+        console.error('Error voting on poll:', error);
     }
-  } catch (error) {
-    console.error('Error voting on comment:', error);
-  }
 };
 
   const filteredPosts = posts?.filter(post => 
@@ -455,6 +369,33 @@ const handleCommentVote = async (commentId, vote) => {
                 <h3 className="text-lg font-medium text-gray-900 mb-2">{selectedPost.title || 'Untitled'}</h3>
                 <p className="text-gray-800 text-sm mb-3">{selectedPost.contentText}</p>
                 
+                {/* Add Poll Display */}
+                {selectedPost.pollData && (
+                  <div className="bg-white rounded-lg border border-gray-200 p-4 mb-3">
+                    <h4 className="font-medium text-gray-900 mb-3">{selectedPost.pollData.question}</h4>
+                    <div className="space-y-2">
+                      {selectedPost.pollData.options.map((option) => (
+                        <button
+                          key={option.optionID}
+                          onClick={() => handlePollVote(selectedPost.pollID, option.optionID)}
+                          className="w-full text-left p-3 rounded-md border border-gray-200 hover:bg-gray-50 transition-colors"
+                        >
+                          <div className="flex justify-between items-center">
+                            <span>{option.optionText}</span>
+                            <span className="text-gray-500">{option.percentage}%</span>
+                          </div>
+                          <div className="mt-1 h-1 bg-gray-100 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-blue-500"
+                              style={{ width: `${option.percentage}%` }}
+                            />
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+                
                 {selectedPost.media && (
                   <div className="mb-3 rounded-md overflow-hidden">
                     <img src={selectedPost.media} alt="Post image" className="w-full" />
@@ -529,4 +470,7 @@ const handleCommentVote = async (commentId, vote) => {
       )}
     </div>
   );
-}
+} // Remove the extra semicolon and brace
+
+
+
