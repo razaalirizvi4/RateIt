@@ -29,7 +29,8 @@ const dbConfig = {
     database: 'proj',
     options: {
         encrypt: false,
-        trustServerCertificate: true
+        trustServerCertificate: true,
+        requestTimeout: 30000 // Increase timeout to 30 seconds
     }
 };
 
@@ -1641,23 +1642,23 @@ app.get('/api/posts/:username', async (req, res) => {
 });
 
 app.get('/api/posts/:username/count', async (req, res) => {
-    try {
-      const { username } = req.params;
-      const query = `
-        SELECT COUNT(*) as postCount 
-        FROM post_content 
-        WHERE username = @username
-      `;
+    // try {
+    //   const { username } = req.params;
+    //   const query = `
+    //     SELECT COUNT(*) as postCount 
+    //     FROM post_content 
+    //     WHERE username = @username
+    //   `;
       
-      const result = await pool.request()
-        .input('username', sql.VarChar, username)
-        .query(query);
+    //   const result = await pool.request()
+    //     .input('username', sql.VarChar, username)
+    //     .query(query);
         
-      res.json({ count: result.recordset[0].postCount });
-    } catch (error) {
-      console.error('Error counting posts:', error);
-      res.status(500).json({ error: 'Failed to count posts' });
-    }
+    //   res.json({ count: result.recordset[0].postCount });
+    // } catch (error) {
+    //   console.error('Error counting posts:', error);
+    //   res.status(500).json({ error: 'Failed to count posts' });
+    // }
   });
 
 // Get all posts
