@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { X, Plus, Upload, Link as LinkIcon, BarChart, Search } from 'lucide-react';
+import { X, Plus, Search } from 'lucide-react';
 import axios from 'axios';
 
 // CreatePostButton component that can be reused
@@ -271,26 +271,6 @@ export function CreatePostButton({ onPostCreated, currentUser = { name: "You", a
                 Text
               </button>
               <button 
-                onClick={() => handleTabChange('media')} 
-                className={`px-4 py-2 text-center flex-1 transition-all duration-300 ${
-                  activeTab === 'media' 
-                    ? 'text-blue-500 border-b-2 border-blue-500' 
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Images & Video
-              </button>
-              <button 
-                onClick={() => handleTabChange('link')} 
-                className={`px-4 py-2 text-center flex-1 transition-all duration-300 ${
-                  activeTab === 'link' 
-                    ? 'text-blue-500 border-b-2 border-blue-500' 
-                    : 'text-gray-500 hover:text-gray-700'
-                }`}
-              >
-                Link
-              </button>
-              <button 
                 onClick={() => handleTabChange('movies')} 
                 className={`px-4 py-2 text-center flex-1 transition-all duration-300 ${
                   activeTab === 'movies' 
@@ -360,142 +340,87 @@ export function CreatePostButton({ onPostCreated, currentUser = { name: "You", a
                   </div>
                 )}
 
-                {/* Media Tab Content */}
-                {activeTab === 'media' && (
-                  <div className="border border-gray-200 border-dashed rounded-md p-8 min-h-32 mb-4 flex items-center justify-center flex-col transition-all duration-300 hover:border-blue-500 hover:bg-blue-50">
-                    <input
-                      type="file"
-                      id="media-upload"
-                      accept="image/*,video/*"
-                      multiple
-                      onChange={handleMediaUpload}
-                      className="hidden"
-                    />
-                    <label 
-                      htmlFor="media-upload"
-                      className="cursor-pointer flex flex-col items-center justify-center w-full h-full"
-                    >
-                      <Upload size={24} className="text-gray-400 mb-2" />
-                      <p className="text-gray-500 text-center mb-2">Drag and Drop or upload media</p>
-                      <button
-                        type="button"
-                        className="px-4 py-2 bg-gray-100 rounded-md text-gray-700 hover:bg-gray-200 transition-colors"
-                      >
-                        Select Files
-                      </button>
-                    </label>
-                    
-                    {mediaFiles.length > 0 && (
-                      <div className="mt-4 w-full">
-                        <p className="text-gray-700 mb-2">Selected files ({mediaFiles.length}):</p>
-                        <ul className="text-gray-500 text-sm">
-                          {mediaFiles.map((file, index) => (
-                            <li key={index} className="truncate">{file.name}</li>
-                          ))}
-                        </ul>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {/* Link Tab Content */}
-                {activeTab === 'link' && (
+                {/* Movies Tab Content */}
+                {activeTab === 'movies' && (
                   <div className="mb-4">
-                    <div className="relative">
+                    <div className="relative mb-4">
                       <input
-                        type="url"
-                        placeholder="Link URL *"
-                        required
-                        value={linkUrl}
-                        onChange={(e) => setLinkUrl(e.target.value)}
+                        type="text"
+                        placeholder="Search movies..."
+                        value={searchMovieQuery}
+                        onChange={(e) => setSearchMovieQuery(e.target.value)}
                         className="w-full bg-white border border-gray-200 rounded-md p-2 pl-9 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-200"
                       />
-                      <LinkIcon size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                      <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    </div>
+                    <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-md">
+                      {filteredMovies.map(movie => (
+                        <button
+                          type="button" // Add type="button" to prevent form submission
+                          key={movie.id}
+                          onClick={() => {
+                            setSelectedMovie(movie.id === selectedMovie ? '' : movie.id); // Toggle selection
+                            setSearchMovieQuery(movie.name); // Fill search with selected movie name
+                          }}
+                          className={`w-full text-left p-3 flex items-center hover:bg-gray-50 ${
+                            selectedMovie === movie.id ? 'bg-blue-50' : ''
+                          }`}
+                        >
+                          <img
+                            src={movie.posters}
+                            alt={movie.name}
+                            className="w-12 h-16 object-cover rounded mr-3"
+                          />
+                          <div>
+                            <h4 className="font-medium text-gray-900">{movie.name}</h4>
+                            <p className="text-sm text-gray-500">{movie.release_year} • {movie.genre}</p>
+                          </div>
+                        </button>
+                      ))}
                     </div>
                   </div>
                 )}
 
-                {/* Movies Tab Content */}
-{activeTab === 'movies' && (
-  <div className="mb-4">
-    <div className="relative mb-4">
-      <input
-        type="text"
-        placeholder="Search movies..."
-        value={searchMovieQuery}
-        onChange={(e) => setSearchMovieQuery(e.target.value)}
-        className="w-full bg-white border border-gray-200 rounded-md p-2 pl-9 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-200"
-      />
-      <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-    </div>
-    <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-md">
-      {filteredMovies.map(movie => (
-        <button
-          type="button" // Add type="button" to prevent form submission
-          key={movie.id}
-          onClick={() => {
-            setSelectedMovie(movie.id === selectedMovie ? '' : movie.id); // Toggle selection
-            setSearchMovieQuery(movie.name); // Fill search with selected movie name
-          }}
-          className={`w-full text-left p-3 flex items-center hover:bg-gray-50 ${
-            selectedMovie === movie.id ? 'bg-blue-50' : ''
-          }`}
-        >
-          <img
-            src={movie.posters}
-            alt={movie.name}
-            className="w-12 h-16 object-cover rounded mr-3"
-          />
-          <div>
-            <h4 className="font-medium text-gray-900">{movie.name}</h4>
-            <p className="text-sm text-gray-500">{movie.release_year} • {movie.genre}</p>
-          </div>
-        </button>
-      ))}
-    </div>
-  </div>
-)}
-
-{/* TV Shows Tab Content */}
-{activeTab === 'tvshows' && (
-  <div className="mb-4">
-    <div className="relative mb-4">
-      <input
-        type="text"
-        placeholder="Search TV shows..."
-        value={searchTvShowQuery}
-        onChange={(e) => setSearchTvShowQuery(e.target.value)}
-        className="w-full bg-white border border-gray-200 rounded-md p-2 pl-9 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-200"
-      />
-      <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
-    </div>
-    <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-md">
-      {filteredTvShows.map(show => (
-        <button
-          type="button" // Add type="button" to prevent form submission
-          key={show.TVShow_ID}
-          onClick={() => {
-            setSelectedTvShow(show.TVShow_ID === selectedTvShow ? '' : show.TVShow_ID); // Toggle selection
-            setSearchTvShowQuery(show.Name); // Fill search with selected show name
-          }}
-          className={`w-full text-left p-3 flex items-center hover:bg-gray-50 ${
-            selectedTvShow === show.TVShow_ID ? 'bg-blue-50' : ''
-          }`}
-        >
-          <img
-            src={show.Posters}
-            alt={show.Name}
-            className="w-12 h-16 object-cover rounded mr-3"
-          />
-          <div>
-            <h4 className="font-medium text-gray-900">{show.Name}</h4>
-            <p className="text-sm text-gray-500">{show.Seasons} Seasons • {show.Genre}</p>
-          </div>
-        </button>
-      ))}
-    </div>
-  </div>
-)}
+                {/* TV Shows Tab Content */}
+                {activeTab === 'tvshows' && (
+                  <div className="mb-4">
+                    <div className="relative mb-4">
+                      <input
+                        type="text"
+                        placeholder="Search TV shows..."
+                        value={searchTvShowQuery}
+                        onChange={(e) => setSearchTvShowQuery(e.target.value)}
+                        className="w-full bg-white border border-gray-200 rounded-md p-2 pl-9 text-gray-900 focus:outline-none focus:border-blue-500 focus:ring-1 focus:ring-blue-500 transition-all duration-200"
+                      />
+                      <Search size={16} className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
+                    </div>
+                    <div className="max-h-60 overflow-y-auto border border-gray-200 rounded-md">
+                      {filteredTvShows.map(show => (
+                        <button
+                          type="button" // Add type="button" to prevent form submission
+                          key={show.TVShow_ID}
+                          onClick={() => {
+                            setSelectedTvShow(show.TVShow_ID === selectedTvShow ? '' : show.TVShow_ID); // Toggle selection
+                            setSearchTvShowQuery(show.Name); // Fill search with selected show name
+                          }}
+                          className={`w-full text-left p-3 flex items-center hover:bg-gray-50 ${
+                            selectedTvShow === show.TVShow_ID ? 'bg-blue-50' : ''
+                          }`}
+                        >
+                          <img
+                            src={show.Posters}
+                            alt={show.Name}
+                            className="w-12 h-16 object-cover rounded mr-3"
+                          />
+                          <div>
+                            <h4 className="font-medium text-gray-900">{show.Name}</h4>
+                            <p className="text-sm text-gray-500">{show.Seasons} Seasons • {show.Genre}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
 
                 {/* Poll Tab Content */}
                 {activeTab === 'poll' && (

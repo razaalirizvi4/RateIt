@@ -269,10 +269,7 @@ export default function ViewProfile() {
                     </div>
                   </div>
                 </div>
-                <button className="flex items-center px-4 py-2 text-sm font-medium text-blue-600 hover:text-blue-700">
-                  <Edit2 size={16} className="mr-2" />
-                  Edit Profile
-                </button>
+                
               </div>
               
               <p className="mt-4 text-gray-600">{userData.bio}</p>
@@ -286,10 +283,7 @@ export default function ViewProfile() {
                   <div className="text-xl font-bold text-gray-900">{friends.length}</div>
                   <div className="text-sm text-gray-500">Friends</div>
                 </div>
-                <div className="text-center">
-                  <div className="text-xl font-bold text-gray-900">{userData.stats?.following || 0}</div>
-                  <div className="text-sm text-gray-500">Following</div>
-                </div>
+                
                 <div className="text-center">
                   <div className="text-xl font-bold text-gray-900">{watchlistCount}</div>
                   <div className="text-sm text-gray-500">Watchlist</div>
@@ -332,7 +326,7 @@ export default function ViewProfile() {
                         </div>
                         <div className="flex-1">
                           <div className="flex items-center justify-between">
-                            <h3 className="font-medium text-gray-900">{post.contentText}</h3>
+                            <h3 className="font-medium text-gray-900">{post.title}</h3>
                             <span className="text-sm text-gray-500">
                               {new Date(post.dateOfPost).toLocaleDateString()}
                             </span>
